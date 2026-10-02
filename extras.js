@@ -104,7 +104,8 @@ const ACHIEVEMENTS = [
   {id:'aa-quiz-100',title:'Amino Acid Master',desc:'Get 100% on a structure quiz',icon:'🧬',check:s=>s.structureQuizPerfect,xp:150},
   {id:'first-fl',title:'Baseline Set',desc:'Log your first full-length exam score',icon:'📊',check:s=>s.flLogged,xp:75},
   {id:'all-mnemonics',title:'Mnemonic Browser',desc:'View all mnemonic categories',icon:'💡',check:s=>s.mnemonicsViewed,xp:50},
-  {id:'dedication-viewed',title:'Sincere Intentions',desc:'Read the dedication',icon:'🤍',check:s=>s.dedicationRead,xp:50},
+  {id:'dedication-viewed',title:'The Note',desc:'Read the dedication letter',icon:'✉️',check:s=>s.dedicationRead,xp:50},
+  {id:'testday-unlocked',title:'Test Day',desc:'Open the sealed letter on test day',icon:'🔓',check:s=>s.testDayOpened,xp:200},
 ];
 
 let _checkingAch = false;
@@ -245,11 +246,61 @@ function launchConfetti(){
 })();
 
 // ---------- JOURNEY STOPS ----------
-const JOURNEY_STOPS = [
-  {date:"Today",emoji:"📍",title:"You are here",desc:'Starting your MCAT journey, '+SHORT_NAME+'. May Allah make every step easy.'},
-  {date:"Sep 3, 2027",emoji:"📝",title:"Test Day inshaAllah",desc:"You walk into that exam center confident, prepared, and grounded in du\'a.'"},
-  {date:"~Oct 2027",emoji:"🎉",title:"Score Release",desc:"The score you worked so hard for appears — the one that opens the next door, inshaAllah."},
-  {date:"2027–2028",emoji:"📨",title:"Applications & Interviews",desc:"Secondaries, interviews, and the tawakkul of choosing where to train."},
-  {date:"2028 inshaAllah",emoji:"🥼",title:"Medical School Begins",desc:"First day of white coat — the dream becoming reality."},
-  {date:"One day inshaAllah",emoji:"🩺",title:"Dr. "+SHORT_NAME,desc:'Treating patients with knowledge, compassion, and ihsan. May Allah make you among those who heal.'},
-];
+function getJourneyStops(){
+  const td = getTestDate();
+  const testStr = td.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  // Score release ~30 days after test day
+  const score = new Date(td); score.setDate(score.getDate()+32);
+  const scoreStr = score.toLocaleDateString('en-US',{year:'numeric',month:'long'});
+  // Next cycle apps (June after test year) / med school starts August after that
+  const appYr = td.getFullYear() + '-' + (td.getFullYear()+1);
+  const medYr = '2028–2029 inshaAllah';
+  return [
+    {date:'2026–2027',emoji:'📍',title:'Third Year (Now)',desc:'Content review, practice, Anki grind, and building the discipline that carries you through. '+SHORT_NAME+' vs. the MCAT — round one.'},
+    {date:testStr,emoji:'📝',title:'Test Day inshaAllah',desc:'You walk into that exam center calm, prepared, and grounded in du\u2018a. Execute, one passage at a time.'},
+    {date:'~'+scoreStr,emoji:'🎉',title:'Score Release',desc:'The score you earned — the one that opens the next door, inshaAllah.'},
+    {date:appYr,emoji:'📨',title:'Senior Year: Applications & Interviews',desc:'Secondaries, interviews, and tawakkul — choosing where you will train. The year of putting yourself out there.'},
+    {date:medYr,emoji:'🥼',title:'Medical School Begins',desc:'First day in the white coat — the dream becoming reality. May Allah make the journey easy.'},
+    {date:'One day inshaAllah',emoji:'🩺',title:'Dr. '+SHORT_NAME,desc:'Treating patients with knowledge, compassion, and ihsan. May Allah make you among those who heal.'},
+  ];
+}
+
+// ---------- TEST DATE ----------
+const DEFAULT_TEST_DATE = '2027-09-03';
+function getTestDate(){
+  const raw = localStorage.getItem('mcat-test-date') || DEFAULT_TEST_DATE;
+  const d = new Date(raw+'T08:00:00');
+  if(isNaN(d.getTime())) return new Date(DEFAULT_TEST_DATE+'T08:00:00');
+  return d;
+}
+function setTestDate(iso){
+  localStorage.setItem('mcat-test-date', iso);
+}
+function daysUntilTest(){
+  const now = new Date();
+  now.setHours(0,0,0,0);
+  const td = getTestDate(); td.setHours(0,0,0,0);
+  return Math.round((td-now)/(1000*60*60*24));
+}
+
+// ---------- SEALED TEST-DAY LETTER ----------
+const TESTDAY_ARABIC = 'رَبِّ اشْرَحْ لِي صَدْرِي وَيَسِّرْ لِي أَمْرِي';
+const TESTDAY_MESSAGE = `You've done your part and put in the real work. Today isn't about knowing everything, it's just about executing what you've practiced one passage at a time. may Allah grant you total calm, sharp recall, and ease through every section. Remember that this test doesn't define your capability; it's just a hurdle you're more than ready to clear. Take a deep breath, tackle it question by question, don't underestimate yourself, and finish strong. Go crush it.`;
+// Tamper-resistance: hash-based seal; opening before test day does not unlock
+const SEAL_SALT = 'bismillah-'+USER_NAME+'-mcat';
+function sealCode(dateISO){
+  // Simple deterministic checksum (not crypto, just prevents casual fiddling)
+  let h=0; const s=SEAL_SALT+dateISO;
+  for(let i=0;i<s.length;i++) h = ((h<<5)-h+s.charCodeAt(i))|0;
+  return 'sealed-'+(h>>>0).toString(36);
+}
+function isLetterUnlocked(){
+  const du = daysUntilTest();
+  if(du <= 0) return true;
+  return localStorage.getItem('mcat-letter-opened') === sealCode(getTestDate().toISOString().slice(0,10));
+}
+function unlockLetter(){
+  localStorage.setItem('mcat-letter-opened', sealCode(getTestDate().toISOString().slice(0,10)));
+  const s=loadStats(); s.testDayOpened=true; saveStats(s); checkAchievements();
+}
+

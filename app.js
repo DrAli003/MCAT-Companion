@@ -160,6 +160,7 @@ function render(){
     case 'duas': renderDuas(); break;
     case 'journey': renderJourney(); break;
     case 'dedication': renderDedication(); break;
+    case 'testday': renderTestDay(); break;
     case 'achievements': renderAchievements(); break;
     case 'timer': openPomodoro(); break;
   }
@@ -177,8 +178,9 @@ function getDailyQuote(){
 
 function renderDashboard(){
   const now = new Date();
-  const diff = state.testDate - now;
-  const days = Math.floor(diff / (1000*60*60*24));
+  const td = getTestDate();
+  const days = daysUntilTest();
+  const diff = td - now;
   const hours = Math.floor((diff / (1000*60*60)) % 24);
   const mins = Math.floor((diff / (1000*60)) % 60);
   const secs = Math.floor((diff / 1000) % 60);
@@ -227,7 +229,7 @@ function renderDashboard(){
       <!-- Personal greeting + Level + QOTD -->
       <div class="grid grid-2 mb-16">
         <div class="card-flat" style="padding:24px; border:1px solid var(--border-strong); background:linear-gradient(135deg,rgba(167,139,250,0.08),rgba(236,72,153,0.05));">
-          <div style="font-size:0.78rem; text-transform:uppercase; letter-spacing:0.12em; color:var(--purple); font-weight:700; margin-bottom:6px;">Assalamu alaykum, ${USER_NAME} 🤍</div>
+          <div style="font-size:0.78rem; text-transform:uppercase; letter-spacing:0.12em; color:var(--purple); font-weight:700; margin-bottom:6px;">Assalamu alaykum, ${USER_NAME}</div>
           ${(()=>{
             const s=loadStats(); const lv=getLevel(s.xp);
             return `
@@ -343,7 +345,7 @@ function renderDashboard(){
           <div class="qa-desc">Timed passages + strategy</div>
         </button>
         <button class="quick-action" data-jump="duas">
-          <div class="qa-icon">🤍</div>
+          <div class="qa-icon">❓</div>
           <div class="qa-title">Du'as for Study</div>
           <div class="qa-desc">Supplications for barakah</div>
         </button>
@@ -418,7 +420,7 @@ function showWelcome(){
         "Indeed, with hardship comes ease."<br>
         <span style="color:var(--purple); font-size:0.95rem; font-weight:600;">— Qur'an 94:5</span>
       </div>
-      <button class="btn btn-primary" id="welcome-begin" style="font-size:1rem; padding:14px 36px;">Bismillah, let's begin 🤍</button>
+      <button class="btn btn-primary" id="welcome-begin" style="font-size:1rem; padding:14px 36px;">Bismillah — let's begin</button>
     </div>
   `;
   document.body.appendChild(overlay);
@@ -472,8 +474,9 @@ function renderAchievements(){
 /* ---------- Journey Timeline ---------- */
 function renderJourney(){
   const stats = loadStats();
-  const now = new Date();
-  const testDate = state.testDate;
+  const stops = getJourneyStops();
+  const td = getTestDate();
+  const days = daysUntilTest();
   app.innerHTML = `
     <section class="section active">
       <div class="section-header">
@@ -484,20 +487,34 @@ function renderJourney(){
         <div class="stats-grid">
           <div class="stat-big-card"><div class="stat-big-val">${stats.pomodorosCompleted}</div><div class="stat-big-label">Pomodoros</div></div>
           <div class="stat-big-card"><div class="stat-big-val">${Math.floor(stats.totalFocusMinutes/60)}h</div><div class="stat-big-label">Focus Time</div></div>
-          <div class="stat-big-card"><div class="stat-big-val">${stats.quizQuestionsAnswered}</div><div class="stat-big-label">Q\'s Answered</div></div>
+          <div class="stat-big-card"><div class="stat-big-val">${stats.quizQuestionsAnswered}</div><div class="stat-big-label">Q's Answered</div></div>
           <div class="stat-big-card"><div class="stat-big-val">${stats.quizQuestionsAnswered?Math.round((stats.quizCorrect/stats.quizQuestionsAnswered)*100):0}%</div><div class="stat-big-label">Accuracy</div></div>
           <div class="stat-big-card"><div class="stat-big-val">${stats.tasksCompleted}</div><div class="stat-big-label">Tasks Done</div></div>
-          <div class="stat-big-card"><div class="stat-big-val">${getStreak()}</div><div class="stat-big-label">Day Streak 🔥</div></div>
+          <div class="stat-big-card"><div class="stat-big-val">${getStreak()}</div><div class="stat-big-label">Day Streak</div></div>
+        </div>
+      </div>
+      <div class="card-flat mb-16" style="padding:20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap; justify-content:space-between;">
+        <div>
+          <div style="font-size:0.78rem; text-transform:uppercase; letter-spacing:0.12em; color:var(--purple); font-weight:700; margin-bottom:4px;">Test Day</div>
+          <div style="font-family:'Space Grotesk'; font-size:1.5rem; font-weight:700;">${td.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</div>
+          <div style="color:var(--text-dim); font-size:0.9rem; margin-top:2px;">${days>0?days+' days to go — Bismillah':days===0?'Today is the day. Bismillah':'Test day has passed — mashaAllah'}</div>
+        </div>
+        <div class="row" style="gap:8px;">
+          <button class="btn" id="change-date-btn">📅 Change Test Date</button>
+          <button class="btn btn-primary" id="open-testday-letter">🔒 Sealed Letter</button>
         </div>
       </div>
       <div class="card-flat">
         <h3 style="margin-bottom:18px;">The Road Ahead</h3>
         <div class="journey-timeline">
-          ${JOURNEY_STOPS.map((stop,i)=>{
-            const isPast = i===0;
-            const isFuture = i>0;
-            return `<div class="journey-stop ${isPast?'past':'future'}">
-              <div class="journey-dot ${isPast?'past':'future'}">${stop.emoji}</div>
+          ${stops.map((stop,i)=>{
+            const isPast = i<=1 ? false : false; // highlight based on date
+            // Determine past/future based on stop date text roughly
+            let cls = 'future';
+            if(i===0) cls='past';
+            if(days<=0 && i<=1) cls='past';
+            return `<div class="journey-stop ${cls}">
+              <div class="journey-dot ${cls}">${stop.emoji}</div>
               <div class="journey-date">${stop.date}</div>
               <div class="journey-title">${stop.title}</div>
               <div class="journey-desc">${stop.desc}</div>
@@ -506,6 +523,86 @@ function renderJourney(){
         </div>
       </div>
     </section>
+  `;
+  qs('#change-date-btn').addEventListener('click', showChangeDateModal);
+  qs('#open-testday-letter').addEventListener('click', ()=>navigate('testday'));
+}
+
+/* ---------- Change Test Date Modal ---------- */
+function showChangeDateModal(){
+  const m = document.createElement('div');
+  m.className = 'modal-overlay';
+  m.style.cssText = 'position:fixed;inset:0;z-index:500;background:rgba(11,7,32,0.7);backdrop-filter:blur(8px);display:grid;place-items:center;';
+  const cur = getTestDate().toISOString().slice(0,10);
+  m.innerHTML = `
+    <div class="modal-content" style="max-width:380px;padding:28px;">
+      <button class="modal-close" id="cd-close">×</button>
+      <h2 style="margin-bottom:6px;">📅 Change Test Date</h2>
+      <p style="color:var(--text-dim);margin-bottom:16px;">Pick your new test day. The countdown and schedule will recalculate.</p>
+      <input type="date" id="cd-input" value="${cur}" min="2025-01-01" max="2030-12-31" style="width:100%;padding:12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:1rem;font-family:inherit;margin-bottom:16px;">
+      <div class="row" style="justify-content:flex-end;gap:8px;">
+        <button class="btn" id="cd-cancel">Cancel</button>
+        <button class="btn btn-primary" id="cd-save">Save</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(m);
+  const close = ()=>m.remove();
+  m.querySelector('#cd-close').onclick = close;
+  m.querySelector('#cd-cancel').onclick = close;
+  m.addEventListener('click',e=>{if(e.target===m)close();});
+  m.querySelector('#cd-save').onclick = ()=>{
+    const v = m.querySelector('#cd-input').value;
+    if(v){setTestDate(v); showToast('Test date updated','— '+getTestDate().toLocaleDateString()); close(); if(state.view==='journey')renderJourney(); else navigate('journey');}
+  };
+}
+
+/* ---------- Locked Test-Day Letter ---------- */
+function renderTestDay(){
+  const days = daysUntilTest();
+  const unlocked = isLetterUnlocked();
+  app.innerHTML = `
+    <section class="section active">
+      <div class="section-header" style="text-align:center;">
+        <h1>🔒 Sealed Letter</h1>
+        <p class="section-subtitle">Open this only on test day, ${SHORT_NAME}. It will not reveal until then.</p>
+      </div>
+      <div style="max-width:560px; margin:0 auto;">
+        ${unlocked ? renderTestDayLetterOpen() : renderTestDaySealed(days)}
+      </div>
+    </section>
+  `;
+  if(unlocked && days<=0 && !loadStats().testDayOpened){ unlockLetter(); }
+}
+
+function renderTestDaySealed(days){
+  const td = getTestDate();
+  return `
+    <div class="dedication-card" style="text-align:center;">
+      <div style="font-size:5rem; margin:10px 0;">🔒</div>
+      <h2 style="margin-bottom:8px;">Do not open until test day</h2>
+      <p style="color:var(--text-dim); margin-bottom:24px;">This letter is sealed until <strong>${td.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</strong>.</p>
+      <div style="display:inline-block; padding:18px 28px; border-radius:var(--radius); background:var(--surface); border:1px solid var(--border); margin-bottom:18px;">
+        <div style="font-size:0.8rem; text-transform:uppercase; letter-spacing:0.12em; color:var(--text-mute); font-weight:700;">Days Until Unlocked</div>
+        <div style="font-family:'Space Grotesk'; font-size:3rem; font-weight:700; background:linear-gradient(135deg,var(--purple),var(--pink)); -webkit-background-clip:text; background-clip:text; color:transparent; line-height:1;">${Math.max(0,days)}</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderTestDayLetterOpen(){
+  return `
+    <div class="dedication-card" style="text-align:center; animation:fadeUp 0.8s ease;">
+      <div style="font-size:4rem; margin-bottom:8px;">🤲</div>
+      <div dir="rtl" lang="ar" style="font-family:'Amiri',serif; font-size:2rem; line-height:1.8; color:var(--purple); margin:20px 0; font-weight:700;">${TESTDAY_ARABIC}</div>
+      <div style="font-size:0.8rem; color:var(--text-mute); text-transform:uppercase; letter-spacing:0.12em; margin-bottom:20px;">— Surah Ta-Ha 20:25-28</div>
+      <div class="dedication-body" style="text-align:left;">
+        <p>${TESTDAY_MESSAGE}</p>
+      </div>
+      <div class="row" style="justify-content:center; gap:10px; margin-top:28px;">
+        <button class="btn btn-primary" data-jump="dashboard">Bismillah — let's go →</button>
+      </div>
+    </div>
   `;
 }
 
@@ -518,19 +615,17 @@ function renderDedication(){
   app.innerHTML = `
     <section class="section active">
       <div class="section-header" style="text-align:center;">
-        <h1>🤍 A Note For You</h1>
+        <h1>✉️ A Note For You</h1>
       </div>
       <div class="dedication-card">
         <div style="font-size:3.5rem; margin-bottom:8px;">🩺</div>
         <h2 style="background:linear-gradient(135deg,var(--purple),var(--pink));-webkit-background-clip:text;background-clip:text;color:transparent;">To Dr. ${SHORT_NAME},</h2>
         <div class="dedication-body">
-          <p>This is small compared to what you're about to achieve, but I hope it helps carry you through the long days and late nights ahead.</p>
-          <p>The MCAT is a mountain — but you weren't made to stand at the bottom. Every Anki card you review, every UWorld question you review (yes, even the ones you get wrong), every morning you drag yourself to your desk when you'd rather sleep — it all matters. It is all planting seeds you'll see bloom inshaAllah.</p>
-          <p>When it gets hard (and it will): remember why you started. Remember the patients you'll treat one day, the family that's proud of you, and the One who never wastes a single effort of those who strive.</p>
-          <p><em>"Allah does not burden a soul beyond that it can bear."</em> — Qur'an 2:286</p>
-          <p>Take breaks. Make du'a in sujood. Trust the process. Trust your Lord. And when you walk across that stage as Dr. Leen one day — may I be there to say I always believed you would.</p>
-          <div class="signoff">— May Allah make this easy, bless your efforts, and grant you the very best in this life and the next. 🤍</div>
-          <div style="margin-top:16px;text-align:right;font-family:'Amiri',serif;font-size:1.15rem;color:var(--purple);">— Made with du'a, always.</div>
+          <p>This is just a small gesture, but I hope it helps carry you through the long days and late nights ahead.</p>
+          <p>The MCAT is a mountain, but you weren't made to stand at the bottom. Every Anki card you review, every question you solve, every morning you drag yourself to your desk when you'd rather sleep; it all matters. It is all planting seeds you'll see bloom inshaAllah.</p>
+          <p>When it gets hard, and it will: remember why you started. Remember why you chose this path, remember the patients you'll treat one day, remember the life you imagined and dreamed of.</p>
+          <p>And one day, when you walk across that stage as Dr. ${SHORT_NAME}, may I be there to say I always believed you would.</p>
+          <p style="font-weight:700; color:var(--purple); margin-top:24px;">Have full faith in Allah, have full faith in yourself.</p>
         </div>
         <div class="row" style="justify-content:center; gap:10px; margin-top:28px;">
           <button class="btn btn-primary" data-jump="dashboard">← Back to studying</button>
@@ -651,7 +746,7 @@ function showStructureQuestion(){
       <div class="quiz-progress-bar" style="margin-bottom:14px;"><div class="quiz-progress-fill" style="width:${pct}%"></div></div>
     </div>
     <div style="display:grid; place-items:center; background:rgba(255,255,255,0.03); border-radius:${'var(--radius)'}; padding:10px; margin-bottom:14px; min-height:230px;">
-      ${drawAAStructure(aa, {width:300, height:220})}
+      ${drawAAStructure(aa, {width:320, height:310})}
     </div>
     <div class="quiz-choices" id="sq-choices">
       ${choices.map((c,i) => `
@@ -756,7 +851,7 @@ function openAAModal(aa){
 
     <div class="card-flat" style="margin-bottom:14px; padding:8px; background:rgba(255,255,255,0.03); display:grid; place-items:center;">
       <div style="font-size:0.7rem; color:var(--text-mute); text-transform:uppercase; letter-spacing:0.12em; margin-bottom:2px; margin-top:4px;">Chemical Structure @ pH 7.4</div>
-      ${drawAAStructure(aa, {width:300, height:220})}
+      ${drawAAStructure(aa, {width:320, height:310})}
     </div>
 
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;">
@@ -1452,7 +1547,7 @@ function gradeCars(){
 function computeSchedule(){
   const hoursPerWeek = parseInt(qs('#hours-week')?.value || 20);
   const startDate = new Date(qs('#start-date')?.value || new Date());
-  const testDate = state.testDate;
+  const testDate = getTestDate();
   const targetScore = parseInt(qs('#target-score')?.value || 515);
   const baseline = parseInt(qs('#baseline')?.value || 500);
 
@@ -1693,7 +1788,7 @@ function drawSchedule(){
   const p1Start = new Date(schedule.startDate);
   const p1End = new Date(p1Start); p1End.setDate(p1End.getDate() + schedule.phase1Weeks*7);
   const p2End = new Date(p1End); p2End.setDate(p2End.getDate() + schedule.phase2Weeks*7);
-  const p3End = new Date(schedule.testDate || state.testDate);
+  const p3End = new Date(schedule.testDate || getTestDate());
 
   const fmt = d => d.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
 
@@ -1906,7 +2001,7 @@ function showToast(text, src=''){
 setInterval(() => {
   if(state.currentSection !== 'dashboard') return;
   const now = new Date();
-  const diff = state.testDate - now;
+  const diff = getTestDate() - now;
   if(diff <= 0) return;
   const days = Math.floor(diff / (1000*60*60*24));
   const hours = Math.floor((diff / (1000*60*60)) % 24);
@@ -2353,7 +2448,7 @@ function renderDuas(){
   app.innerHTML = `
     <section class="section active">
       <div class="section-header">
-        <h1>🤍 Du'as for Seeking Knowledge & Exams</h1>
+        <h1>🕌 Du'as for Seeking Knowledge & Exams</h1>
         <p class="section-subtitle">A collection of supplications from the Qur'an and Sunnah to seek Allah's help in your studies. May Allah accept and make your journey easy.</p>
       </div>
       <div class="card-flat mb-16" style="border-color:var(--green);">
