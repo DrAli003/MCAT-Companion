@@ -158,6 +158,9 @@ function render(){
     case 'psych': renderPsych(); break;
     case 'scores': renderScores(); break;
     case 'duas': renderDuas(); break;
+    case 'journey': renderJourney(); break;
+    case 'dedication': renderDedication(); break;
+    case 'achievements': renderAchievements(); break;
     case 'timer': openPomodoro(); break;
   }
 }
@@ -218,6 +221,44 @@ function renderDashboard(){
             <span class="quote-src" id="dash-quote-src">${quote.src}</span>
             <button class="btn btn-sm" id="new-quote-btn" title="New quote">↻ New Quote</button>
           </div>
+        </div>
+      </div>
+
+      <!-- Personal greeting + Level + QOTD -->
+      <div class="grid grid-2 mb-16">
+        <div class="card-flat" style="padding:24px; border:1px solid var(--border-strong); background:linear-gradient(135deg,rgba(167,139,250,0.08),rgba(236,72,153,0.05));">
+          <div style="font-size:0.78rem; text-transform:uppercase; letter-spacing:0.12em; color:var(--purple); font-weight:700; margin-bottom:6px;">Assalamu alaykum, ${USER_NAME} 🤍</div>
+          ${(()=>{
+            const s=loadStats(); const lv=getLevel(s.xp);
+            return `
+              <div style="display:flex; align-items:center; gap:16px; margin-top:10px;">
+                <div class="level-num" style="font-size:3rem;">Lv ${lv.cur.level}</div>
+                <div style="flex:1;">
+                  <div style="font-weight:700; font-size:1.05rem;">${lv.cur.title}</div>
+                  <div style="font-size:0.82rem; color:var(--text-mute); margin-top:2px;">${s.xp} XP total · ${lv.next.min - s.xp} XP to Lv ${lv.next.level}</div>
+                  <div class="xp-bar"><div class="xp-fill" style="width:${(lv.prog*100).toFixed(1)}%"></div></div>
+                </div>
+                <button class="btn btn-sm" data-jump="achievements">🏅 Badges</button>
+              </div>
+            `;
+          })()}
+          <p style="margin-top:12px; font-size:0.9rem; color:var(--text-dim); margin-bottom:0;">
+            Today is a step closer to that white coat, ${SHORT_NAME}. Be consistent, make du'a, and trust Allah's plan.
+          </p>
+        </div>
+
+        <div class="qotd-card" id="qotd-wrap">
+          ${(()=>{
+            const q = getQOTD();
+            return `
+              <div class="qotd-label">❓ Question of the Day</div>
+              <div style="font-weight:600; font-size:1.05rem; margin-bottom:10px;">${q.q}</div>
+              <div class="quiz-choices" style="gap:6px;" id="qotd-choices">
+                ${q.choices.map((c,i)=>`<button class="quiz-choice" data-i="${i}" style="padding:10px 14px; font-size:0.88rem;"><span class="choice-letter">${'ABCD'[i]}</span><span>${c}</span></button>`).join('')}
+              </div>
+              <div id="qotd-explain"></div>
+            `;
+          })()}
         </div>
       </div>
 
@@ -334,7 +375,172 @@ function renderDashboard(){
 
   // Quick action buttons
   qsa('.quick-action').forEach(b => b.addEventListener('click', () => navigate(b.dataset.jump)));
+
+  // QOTD interaction
+  const qotdChoices = qsa('#qotd-choices .quiz-choice');
+  if(qotdChoices.length){
+    const qotd = getQOTD();
+    qotdChoices.forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        const i = +btn.dataset.i;
+        const correct = i === qotd.answer;
+        qotdChoices.forEach((b,bi)=>{
+          b.disabled=true;
+          if(bi===qotd.answer) b.classList.add('correct');
+          else if(bi===i) b.classList.add('wrong');
+        });
+        const exp = qs('#qotd-explain');
+        exp.innerHTML = `<div class="quiz-explain"><strong>${correct?'✅ Correct! +5 XP':'❌ Good try'}</strong> ${qotd.explain}</div>`;
+        if(correct) awardXP(5, 'QOTD');
+      });
+    });
+  }
+  // Badges button
+  const badgeBtn = qs('[data-jump="achievements"]');
+  if(badgeBtn) badgeBtn.addEventListener('click',()=>navigate('achievements'));
+
+  // First-visit welcome
+  if(!localStorage.getItem('mcat-welcomed')){
+    showWelcome();
+    localStorage.setItem('mcat-welcomed','true');
+  }
 }
+
+function showWelcome(){
+  const overlay = document.createElement('div');
+  overlay.className='welcome-overlay';
+  overlay.innerHTML = `
+    <div class="welcome-card" style="animation:fadeUp 0.7s ease;">
+      <div style="font-size:5rem;">🩺</div>
+      <div class="welcome-title">Welcome, Dr. Leen</div>
+      <p class="welcome-sub">Your MCAT companion is ready. Let's get you to that white coat inshaAllah.</p>
+      <div style="font-size:1.2rem; line-height:1.8; color:var(--text-dim); margin:20px 0;">
+        "Indeed, with hardship comes ease."<br>
+        <span style="color:var(--purple); font-size:0.95rem; font-weight:600;">— Qur'an 94:5</span>
+      </div>
+      <button class="btn btn-primary" id="welcome-begin" style="font-size:1rem; padding:14px 36px;">Bismillah, let's begin 🤍</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  qs('#welcome-begin',overlay).addEventListener('click',()=>{
+    overlay.style.opacity='0';
+    overlay.style.transition='opacity 0.5s';
+    setTimeout(()=>overlay.remove(),500);
+    awardXP(10,'Welcome');
+    launchConfetti();
+  });
+}
+
+/* ---------- Achievements Page ---------- */
+function renderAchievements(){
+  const s = loadStats();
+  s.dedicationRead = s.dedicationRead; // keep
+  s.mnemonicsViewed = s.mnemonicsViewed || false;
+  s.structureQuizPerfect = s.structureQuizPerfect || false;
+  s.flLogged = s.flLogged || state.flScores && state.flScores.exams && state.flScores.exams.some(e=>e.score);
+  checkAchievements();
+  const unlocked = Object.keys(s.achievements).length;
+  app.innerHTML = `
+    <section class="section active">
+      <div class="section-header">
+        <h1>🏅 Achievements</h1>
+        <p class="section-subtitle">${unlocked} of ${ACHIEVEMENTS.length} badges unlocked. Keep studying to earn more!</p>
+      </div>
+      <div class="card-flat" style="display:flex; align-items:center; gap:20px; margin-bottom:20px; padding:20px;">
+        <div style="font-size:3rem;">🏅</div>
+        <div style="flex:1;">
+          <div style="font-weight:700; font-size:1.2rem;">${getLevel(s.xp).cur.title}</div>
+          <div style="color:var(--text-dim); font-size:0.9rem;">Level ${getLevel(s.xp).cur.level} · ${s.xp} XP</div>
+          <div class="xp-bar" style="margin-top:8px;"><div class="xp-fill" style="width:${(getLevel(s.xp).prog*100).toFixed(1)}%"></div></div>
+        </div>
+      </div>
+      <div class="ach-grid">
+        ${ACHIEVEMENTS.map(a=>{
+          const got = !!s.achievements[a.id];
+          return `<div class="ach-tile ${got?'':'locked'}">
+            <div class="ach-icon">${a.icon}</div>
+            <div class="ach-name">${a.title}</div>
+            <div class="ach-desc">${a.desc}</div>
+            <div style="font-size:0.65rem;color:var(--purple);margin-top:4px;font-weight:600;">+${a.xp} XP</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </section>
+  `;
+}
+
+/* ---------- Journey Timeline ---------- */
+function renderJourney(){
+  const stats = loadStats();
+  const now = new Date();
+  const testDate = state.testDate;
+  app.innerHTML = `
+    <section class="section active">
+      <div class="section-header">
+        <h1>🗺️ Your Journey to Dr. ${SHORT_NAME}</h1>
+        <p class="section-subtitle">Every day of study, every question you answer, is one step closer. May Allah make each step easy.</p>
+      </div>
+      <div class="card-flat mb-16" style="padding:22px;">
+        <div class="stats-grid">
+          <div class="stat-big-card"><div class="stat-big-val">${stats.pomodorosCompleted}</div><div class="stat-big-label">Pomodoros</div></div>
+          <div class="stat-big-card"><div class="stat-big-val">${Math.floor(stats.totalFocusMinutes/60)}h</div><div class="stat-big-label">Focus Time</div></div>
+          <div class="stat-big-card"><div class="stat-big-val">${stats.quizQuestionsAnswered}</div><div class="stat-big-label">Q\'s Answered</div></div>
+          <div class="stat-big-card"><div class="stat-big-val">${stats.quizQuestionsAnswered?Math.round((stats.quizCorrect/stats.quizQuestionsAnswered)*100):0}%</div><div class="stat-big-label">Accuracy</div></div>
+          <div class="stat-big-card"><div class="stat-big-val">${stats.tasksCompleted}</div><div class="stat-big-label">Tasks Done</div></div>
+          <div class="stat-big-card"><div class="stat-big-val">${getStreak()}</div><div class="stat-big-label">Day Streak 🔥</div></div>
+        </div>
+      </div>
+      <div class="card-flat">
+        <h3 style="margin-bottom:18px;">The Road Ahead</h3>
+        <div class="journey-timeline">
+          ${JOURNEY_STOPS.map((stop,i)=>{
+            const isPast = i===0;
+            const isFuture = i>0;
+            return `<div class="journey-stop ${isPast?'past':'future'}">
+              <div class="journey-dot ${isPast?'past':'future'}">${stop.emoji}</div>
+              <div class="journey-date">${stop.date}</div>
+              <div class="journey-title">${stop.title}</div>
+              <div class="journey-desc">${stop.desc}</div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+/* ---------- Dedication Page ---------- */
+function renderDedication(){
+  const s = loadStats();
+  s.dedicationRead = true;
+  saveStats(s);
+  checkAchievements();
+  app.innerHTML = `
+    <section class="section active">
+      <div class="section-header" style="text-align:center;">
+        <h1>🤍 A Note For You</h1>
+      </div>
+      <div class="dedication-card">
+        <div style="font-size:3.5rem; margin-bottom:8px;">🩺</div>
+        <h2 style="background:linear-gradient(135deg,var(--purple),var(--pink));-webkit-background-clip:text;background-clip:text;color:transparent;">To Dr. ${SHORT_NAME},</h2>
+        <div class="dedication-body">
+          <p>This is small compared to what you're about to achieve, but I hope it helps carry you through the long days and late nights ahead.</p>
+          <p>The MCAT is a mountain — but you weren't made to stand at the bottom. Every Anki card you review, every UWorld question you review (yes, even the ones you get wrong), every morning you drag yourself to your desk when you'd rather sleep — it all matters. It is all planting seeds you'll see bloom inshaAllah.</p>
+          <p>When it gets hard (and it will): remember why you started. Remember the patients you'll treat one day, the family that's proud of you, and the One who never wastes a single effort of those who strive.</p>
+          <p><em>"Allah does not burden a soul beyond that it can bear."</em> — Qur'an 2:286</p>
+          <p>Take breaks. Make du'a in sujood. Trust the process. Trust your Lord. And when you walk across that stage as Dr. Leen one day — may I be there to say I always believed you would.</p>
+          <div class="signoff">— May Allah make this easy, bless your efforts, and grant you the very best in this life and the next. 🤍</div>
+          <div style="margin-top:16px;text-align:right;font-family:'Amiri',serif;font-size:1.15rem;color:var(--purple);">— Made with du'a, always.</div>
+        </div>
+        <div class="row" style="justify-content:center; gap:10px; margin-top:28px;">
+          <button class="btn btn-primary" data-jump="dashboard">← Back to studying</button>
+        </div>
+      </div>
+    </section>
+  `;
+  qsa('[data-jump]').forEach(b=>b.addEventListener('click',()=>navigate(b.dataset.jump)));
+}
+
 
 /* ===========================================================
    AMINO ACID EXPLORER
@@ -491,8 +697,15 @@ function answerStructure(btn, correctAA){
 }
 function endStructureQuiz(){
   const pct = Math.round((structQuiz.score/structQuiz.total)*100);
+  if(pct===100){
+    const s=loadStats();
+    s.structureQuizPerfect=true;
+    saveStats(s);
+    awardXP(30,'Structure quiz perfect!');
+  }
+  awardXP(10 + Math.floor(pct/20)*5, 'Structure quiz completed');
   let msg, emoji;
-  if(pct===100){emoji="🏆"; msg="Perfect score! You're ready for any amino acid question.";}
+  if(pct===100){emoji="🏆"; msg="Perfect score! You're ready for any amino acid question."; launchConfetti();}
   else if(pct>=80){emoji="🔥"; msg="Excellent! Structures are looking solid.";}
   else if(pct>=60){emoji="💪"; msg="Good progress! Review the ones you missed and try again.";}
   else{emoji="📚"; msg="Keep drilling — open the explorer and click each structure to learn.";}
@@ -579,6 +792,7 @@ function openAAModal(aa){
    MNEMONICS
    =========================================================== */
 function renderMnemonics(){
+  const s = loadStats(); s.mnemonicsViewed = true; saveStats(s);
   const cats = ['All', ...new Set(MNEMONICS.map(m => m.cat))];
   const filtered = MNEMONICS.filter(m =>
     (state.mnemCategory === 'All' || m.cat === state.mnemCategory) &&
@@ -788,9 +1002,15 @@ function answerQuiz(i, q){
   if(correct){
     state.quizScore++;
     playSound('correct');
+    awardXP(3, 'Correct answer');
   } else {
     playSound('wrong');
   }
+  const s = loadStats();
+  s.quizQuestionsAnswered++;
+  if(correct) s.quizCorrect++;
+  s.quizzesTaken = Math.max(s.quizzesTaken, Math.ceil((state.quizIndex+1)/30));
+  saveStats(s);
   // Track category
   const cat = q.cat || 'General';
   if(!state.quizCategories[cat]) state.quizCategories[cat] = {correct:0,total:0};
@@ -1626,7 +1846,17 @@ function togglePom(){
         clearInterval(state.pomInterval);
         state.pomRunning = false;
         btn.innerHTML = '▶ Start';
-        showToast(state.pomMode === 'focus' ? '🎉 Focus session complete! Take a break.' : '⏰ Break over! Ready to focus?');
+        if(state.pomMode === 'focus'){
+          const s = loadStats();
+          s.pomodorosCompleted++;
+          s.totalFocusMinutes += 25;
+          saveStats(s);
+          awardXP(15, 'Pomodoro complete');
+          showToast('🎉 Focus session complete! +15 XP', 'Take a well-deserved break');
+          launchConfetti();
+        } else {
+          showToast('⏰ Break over! Ready to focus?');
+        }
         resetPom();
         return;
       }
@@ -1807,7 +2037,17 @@ function bindTaskEvents(){
     const day = el.dataset.day;
     const id = +el.dataset.toggle;
     const t = state.tasks[day].find(x=>x.id===id);
-    if(t){ t.done = !t.done; saveTasks(); renderTasks(); if(t.done) playSound('correct');}
+    if(t){
+      t.done = !t.done;
+      if(t.done){
+        const s = loadStats();
+        s.tasksCompleted++;
+        saveStats(s);
+        awardXP(5,'Task completed');
+        playSound('correct');
+      }
+      saveTasks(); renderTasks();
+    }
   }));
   qsa('.task-del').forEach(el => el.addEventListener('click', () => {
     const day = el.dataset.day;
