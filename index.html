@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MCAT Companion — Study Smarter, Score Higher</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- Animated background -->
+<div class="bg-gradient">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+  <div class="blob blob-4"></div>
+</div>
+
+<!-- Navigation -->
+<nav class="navbar">
+  <div class="nav-brand">
+    <div class="logo-icon">
+      <svg viewBox="0 0 40 40" fill="none">
+        <path d="M20 4L34 12V28L20 36L6 28V12L20 4Z" stroke="url(#g1)" stroke-width="2.5" fill="url(#g2)" opacity="0.9"/>
+        <path d="M14 20L18 24L26 16" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <defs>
+          <linearGradient id="g1" x1="4" y1="4" x2="36" y2="36">
+            <stop stop-color="#a78bfa"/><stop offset="1" stop-color="#ec4899"/>
+          </linearGradient>
+          <linearGradient id="g2" x1="4" y1="4" x2="36" y2="36">
+            <stop stop-color="#a78bfa" stop-opacity="0.3"/><stop offset="1" stop-color="#ec4899" stop-opacity="0.3"/>
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+    <span>MCAT Companion</span>
+  </div>
+  <div class="nav-links">
+    <button class="nav-link active" data-section="dashboard">Dashboard</button>
+    <button class="nav-link" data-section="schedule">Schedule</button>
+    <button class="nav-link" data-section="amino">Amino Acids</button>
+    <button class="nav-link" data-section="pathways">Pathways</button>
+    <button class="nav-link" data-section="mnemonics">Mnemonics</button>
+    <button class="nav-link" data-section="formulas">Formulas</button>
+    <button class="nav-link" data-section="quiz">Quiz Bowl</button>
+    <button class="nav-link" data-section="cars">CARS</button>
+    <button class="nav-link" data-section="psych">Psych/Soc</button>
+    <button class="nav-link" data-section="timer">⏱️</button>
+  </div>
+</nav>
+
+<main id="app"></main>
+
+<!-- Floating pomodoro button -->
+<button id="pomodoro-fab" class="fab" title="Pomodoro Timer">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6M12 2v3"/>
+  </svg>
+</button>
+
+<!-- Quote modal / toast -->
+<div id="quote-toast" class="quote-toast">
+  <p id="quote-text"></p>
+  <small id="quote-src"></small>
+</div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
