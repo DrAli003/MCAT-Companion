@@ -1,14 +1,12 @@
+
 /* ============================================================
    MCAT COMPANION — APPLICATION LOGIC
    ============================================================ */
 
 /* ---------- Helpers ---------- */
-const $ = sel => document.querySelector(sel);
-const $$ = sel => document.querySelectorAll(sel);
-const app = $('#app');
-
-// Apply theme on load
-if(state.lightTheme) document.body.classList.add('light');
+const qs = sel => document.querySelector(sel);
+const qsa = sel => document.querySelectorAll(sel);
+const app = qs("#app");
 
 /* ---------- Sound (Web Audio API — correct/wrong chimes) ---------- */
 let audioCtx;
@@ -82,7 +80,8 @@ function getStreak(){
 
 /* ---------- Theme toggle ---------- */
 function initTheme(){
-  const btn = $('#theme-toggle-btn');
+  const btn = qs('#theme-toggle-btn');
+  if(!btn) return;
   btn.textContent = state.lightTheme ? '☀️' : '🌙';
   btn.addEventListener('click', () => {
     state.lightTheme = !state.lightTheme;
@@ -122,6 +121,9 @@ const state = {
   tasks: JSON.parse(localStorage.getItem('mcat-tasks') || '{}'),
   flScores: JSON.parse(localStorage.getItem('mcat-fl-scores') || 'null'),
 };
+// Apply theme on load
+if(state.lightTheme) document.body.classList.add('light');
+
 
 const POM_MODES = {
   focus: {label:'Focus', sec:25*60, color:'url(#pomGrad)'},
@@ -130,13 +132,11 @@ const POM_MODES = {
 };
 
 /* ---------- Navigation ---------- */
-$$('.nav-link').forEach(btn => {
-  btn.addEventListener('click', () => navigate(btn.dataset.section));
-});
+// nav binding happens in init
 
 function navigate(section){
   state.currentSection = section;
-  $$('.nav-link').forEach(b => b.classList.toggle('active', b.dataset.section === section));
+  qsa('.nav-link').forEach(b => b.classList.toggle('active', b.dataset.section === section));
   render();
   window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -326,14 +326,14 @@ function renderDashboard(){
   `;
 
   // New quote button
-  $('#new-quote-btn').addEventListener('click', () => {
+  qs('#new-quote-btn').addEventListener('click', () => {
     const q = QUOTES[Math.floor(Math.random()*QUOTES.length)];
-    $('#dash-quote-text').textContent = q.text;
-    $('#dash-quote-src').textContent = q.src;
+    qs('#dash-quote-text').textContent = q.text;
+    qs('#dash-quote-src').textContent = q.src;
   });
 
   // Quick action buttons
-  $$('.quick-action').forEach(b => b.addEventListener('click', () => navigate(b.dataset.jump)));
+  qsa('.quick-action').forEach(b => b.addEventListener('click', () => navigate(b.dataset.jump)));
 }
 
 /* ===========================================================
@@ -377,13 +377,13 @@ function renderAmino(){
     </div>
   `;
 
-  $$('.group-tab').forEach(t => t.addEventListener('click', () => { state.aaFilter = t.dataset.group; renderAmino(); }));
-  $('#aa-quiz-toggle').addEventListener('click', () => {
+  qsa('.group-tab').forEach(t => t.addEventListener('click', () => { state.aaFilter = t.dataset.group; renderAmino(); }));
+  qs('#aa-quiz-toggle').addEventListener('click', () => {
     state.aaQuizMode = !state.aaQuizMode;
     renderAmino();
   });
 
-  $$('.aa-card').forEach((c,i) => c.addEventListener('click', () => {
+  qsa('.aa-card').forEach((c,i) => c.addEventListener('click', () => {
     if(state.aaQuizMode){
       // Quiz: hide name, reveal on click
       c.classList.toggle('revealed');
@@ -403,11 +403,11 @@ function renderAmino(){
 
   // If quiz mode, hide names initially
   if(state.aaQuizMode){
-    $$('.aa-card .aa-name, .aa-card .aa-group').forEach(el => el.style.visibility = 'hidden');
+    qsa('.aa-card .aa-name, .aa-card .aa-group').forEach(el => el.style.visibility = 'hidden');
   }
 
   // Structure quiz button
-  $('#struct-quiz-btn').addEventListener('click', startStructureQuiz);
+  qs('#struct-quiz-btn').addEventListener('click', startStructureQuiz);
 }
 
 /* Structure identification quiz */
@@ -431,8 +431,8 @@ function showStructureQuestion(){
   const choices = shuffleArray([aa, ...distractors]);
   const pct = (structQuiz.idx / structQuiz.total)*100;
 
-  const modal = $('#struct-quiz-modal');
-  const content = $('#struct-quiz-content');
+  const modal = qs('#struct-quiz-modal');
+  const content = qs('#struct-quiz-content');
   content.innerHTML = `
     <button class="modal-close" id="sq-close">×</button>
     <div style="text-align:center;">
@@ -458,8 +458,8 @@ function showStructureQuestion(){
     <div id="sq-explain"></div>
   `;
   modal.classList.add('open');
-  $('#sq-close').addEventListener('click', () => modal.classList.remove('open'));
-  $$('#sq-choices .quiz-choice').forEach(b => {
+  qs('#sq-close').addEventListener('click', () => modal.classList.remove('open'));
+  qsa('#sq-choices .quiz-choice').forEach(b => {
     b.addEventListener('click', () => answerStructure(b, aa));
   });
 }
@@ -470,12 +470,12 @@ function answerStructure(btn, correctAA){
   const right = picked === correctAA.abbr;
   if(right) structQuiz.score++;
 
-  $$('#sq-choices .quiz-choice').forEach(b => {
+  qsa('#sq-choices .quiz-choice').forEach(b => {
     b.disabled = true;
     if(b.dataset.abbr === correctAA.abbr) b.classList.add('correct');
     else if(b === btn) b.classList.add('wrong');
   });
-  $('#sq-explain').innerHTML = `
+  qs('#sq-explain').innerHTML = `
     <div class="quiz-explain" style="${right?'':'background:rgba(248,113,113,0.08); border-color:rgba(248,113,113,0.3);'}">
       <strong>${right?'✅ Correct!':'❌ That was '+correctAA.name+' ('+correctAA.abbr+').'}</strong> ${correctAA.special.split(';')[0]}.
     </div>
@@ -483,7 +483,7 @@ function answerStructure(btn, correctAA){
       <button class="btn btn-primary" id="sq-next">${structQuiz.idx+1>=structQuiz.total?'See Results':'Next →'}</button>
     </div>
   `;
-  $('#sq-next').addEventListener('click', () => {
+  qs('#sq-next').addEventListener('click', () => {
     structQuiz.idx++;
     structQuiz.answered = false;
     showStructureQuestion();
@@ -496,7 +496,7 @@ function endStructureQuiz(){
   else if(pct>=80){emoji="🔥"; msg="Excellent! Structures are looking solid.";}
   else if(pct>=60){emoji="💪"; msg="Good progress! Review the ones you missed and try again.";}
   else{emoji="📚"; msg="Keep drilling — open the explorer and click each structure to learn.";}
-  const content = $('#struct-quiz-content');
+  const content = qs('#struct-quiz-content');
   content.innerHTML = `
     <button class="modal-close" id="sq-close2">×</button>
     <div style="text-align:center; padding:20px 0;">
@@ -512,9 +512,9 @@ function endStructureQuiz(){
       </div>
     </div>
   `;
-  $('#sq-close2').addEventListener('click', () => $('#struct-quiz-modal').classList.remove('open'));
-  $('#sq-again').addEventListener('click', startStructureQuiz);
-  $('#sq-browse').addEventListener('click', () => $('#struct-quiz-modal').classList.remove('open'));
+  qs('#sq-close2').addEventListener('click', () => qs('#struct-quiz-modal').classList.remove('open'));
+  qs('#sq-again').addEventListener('click', startStructureQuiz);
+  qs('#sq-browse').addEventListener('click', () => qs('#struct-quiz-modal').classList.remove('open'));
 }
 
 function renderAACard(aa, idx){
@@ -530,8 +530,8 @@ function renderAACard(aa, idx){
 }
 
 function openAAModal(aa){
-  const modal = $('#aa-modal');
-  const content = $('#aa-modal-content');
+  const modal = qs('#aa-modal');
+  const content = qs('#aa-modal-content');
   content.innerHTML = `
     <button class="modal-close" id="modal-close">×</button>
     <div style="display:flex; align-items:baseline; gap:14px; margin-bottom:4px;">
@@ -571,7 +571,7 @@ function openAAModal(aa){
     </div>
   `;
   modal.classList.add('open');
-  $('#modal-close').addEventListener('click', () => modal.classList.remove('open'));
+  qs('#modal-close').addEventListener('click', () => modal.classList.remove('open'));
   modal.addEventListener('click', e => { if(e.target === modal) modal.classList.remove('open'); });
 }
 
@@ -617,8 +617,8 @@ function renderMnemonics(){
     </section>
   `;
 
-  $('#mnem-search').addEventListener('input', e => { state.mnemQuery = e.target.value; renderMnemonics(); });
-  $$('.cat-chip').forEach(c => c.addEventListener('click', () => { state.mnemCategory = c.dataset.cat; renderMnemonics(); }));
+  qs('#mnem-search').addEventListener('input', e => { state.mnemQuery = e.target.value; renderMnemonics(); });
+  qsa('.cat-chip').forEach(c => c.addEventListener('click', () => { state.mnemCategory = c.dataset.cat; renderMnemonics(); }));
 }
 
 /* ===========================================================
@@ -654,7 +654,7 @@ function renderFormulas(){
         f.name.toLowerCase().includes(q.toLowerCase()) ||
         f.formula.toLowerCase().includes(q.toLowerCase()) ||
         f.cat.toLowerCase().includes(q.toLowerCase())));
-    $('#formula-grid').innerHTML = filtered.map(f => `
+    qs('#formula-grid').innerHTML = filtered.map(f => `
       <div class="formula-card">
         <div class="formula-cat">${f.cat}</div>
         <div class="formula-name">${f.name}</div>
@@ -666,12 +666,12 @@ function renderFormulas(){
   drawFormulas();
 
   let curCat = 'All';
-  $('#formula-search').addEventListener('input', e => drawFormulas(curCat, e.target.value));
-  $$('#formula-cats .cat-chip').forEach(c => c.addEventListener('click', () => {
-    $$('#formula-cats .cat-chip').forEach(x => x.classList.remove('active'));
+  qs('#formula-search').addEventListener('input', e => drawFormulas(curCat, e.target.value));
+  qsa('#formula-cats .cat-chip').forEach(c => c.addEventListener('click', () => {
+    qsa('#formula-cats .cat-chip').forEach(x => x.classList.remove('active'));
     c.classList.add('active');
     curCat = c.dataset.cat;
-    drawFormulas(curCat, $('#formula-search').value);
+    drawFormulas(curCat, qs('#formula-search').value);
   }));
 }
 
@@ -697,7 +697,7 @@ function renderPsych(){
       q === '' ||
       t.term.toLowerCase().includes(q.toLowerCase()) ||
       t.def.toLowerCase().includes(q.toLowerCase()));
-    $('#psych-grid').innerHTML = filtered.map(t => `
+    qs('#psych-grid').innerHTML = filtered.map(t => `
       <div class="psych-card">
         <div class="psych-term">${t.term}</div>
         <div class="psych-def">${t.def}</div>
@@ -705,7 +705,7 @@ function renderPsych(){
     `).join('');
   }
   draw();
-  $('#psych-search').addEventListener('input', e => draw(e.target.value));
+  qs('#psych-search').addEventListener('input', e => draw(e.target.value));
 }
 
 /* ===========================================================
@@ -769,10 +769,10 @@ function renderQuiz(){
     </section>
   `;
 
-  $$('.quiz-choice').forEach(btn => {
+  qsa('.quiz-choice').forEach(btn => {
     btn.addEventListener('click', () => answerQuiz(parseInt(btn.dataset.i), q));
   });
-  $('#quiz-restart').addEventListener('click', () => {
+  qs('#quiz-restart').addEventListener('click', () => {
     state.quizShuffled = shuffleArray(QUIZ_QUESTIONS);
     state.quizIndex = 0;
     state.quizScore = 0;
@@ -797,14 +797,14 @@ function answerQuiz(i, q){
   state.quizCategories[cat].total++;
   if(correct) state.quizCategories[cat].correct++;
 
-  const choices = $$('.quiz-choice');
+  const choices = qsa('.quiz-choice');
   choices.forEach((b, bi) => {
     b.disabled = true;
     if(bi === q.answer) b.classList.add('correct');
     else if(bi === i) b.classList.add('wrong');
   });
 
-  $('#quiz-explain-wrap').innerHTML = `
+  qs('#quiz-explain-wrap').innerHTML = `
     <div class="quiz-explain">
       <strong>${correct ? '✅ Correct!' : '❌ Not quite.'}</strong> ${q.explain}
     </div>
@@ -812,7 +812,7 @@ function answerQuiz(i, q){
       <button class="btn btn-primary" id="next-q">${state.quizIndex+1 >= state.quizShuffled.length ? 'See Results 🏆' : 'Next Question →'}</button>
     </div>
   `;
-  $('#next-q').addEventListener('click', () => {
+  qs('#next-q').addEventListener('click', () => {
     state.quizIndex++;
     state.quizAnswered = false;
     renderQuiz();
@@ -877,7 +877,7 @@ function renderQuizEnd(){
       </div>
     </section>
   `;
-  $('#quiz-again').addEventListener('click', () => {
+  qs('#quiz-again').addEventListener('click', () => {
     state.quizShuffled = shuffleArray(QUIZ_QUESTIONS);
     state.quizIndex = 0; state.quizScore = 0; state.quizAnswered = false;
     state.quizCategories = {};
@@ -909,7 +909,7 @@ function renderPathways(){
     </section>
   `;
 
-  $$('.pathway-tab').forEach(t => t.addEventListener('click', () => {
+  qsa('.pathway-tab').forEach(t => t.addEventListener('click', () => {
     currentPathway = t.dataset.path;
     renderPathways();
   }));
@@ -929,7 +929,7 @@ function node(name, enzyme, note, atp, rl){
 const arrow = () => `<div class="path-arrow">→</div>`;
 
 function drawPathway(){
-  const body = $('#pathway-body');
+  const body = qs('#pathway-body');
   if(currentPathway === 'glycolysis'){
     body.innerHTML = `
       <h3 style="text-align:center; margin-bottom:8px;">Glycolysis — Glucose → 2 Pyruvate (Cytoplasm)</h3>
@@ -1108,10 +1108,10 @@ function renderCars(){
     </section>
   `;
 
-  $$('#passage-choices button').forEach(b => {
+  qsa('#passage-choices button').forEach(b => {
     b.addEventListener('click', () => startCars(parseInt(b.dataset.passage)));
   });
-  $('#cars-back').addEventListener('click', () => {
+  qs('#cars-back').addEventListener('click', () => {
     clearInterval(state.carsTimer);
     state.carsTimer = null;
     renderCars();
@@ -1124,18 +1124,18 @@ function startCars(i){
   state.carsAnswered = {};
   state.carsAnswersShown = false;
 
-  $('#cars-start').style.display='none';
-  $('#cars-active').classList.add('active');
+  qs('#cars-start').style.display='none';
+  qs('#cars-active').classList.add('active');
 
   const p = CARS_PASSAGES[i];
-  $('#cars-pnum').textContent = i+1;
-  $('#cars-ptitle').textContent = p.title;
-  $('#cars-passage-text').innerHTML = `
+  qs('#cars-pnum').textContent = i+1;
+  qs('#cars-ptitle').textContent = p.title;
+  qs('#cars-passage-text').innerHTML = `
     <div class="cars-passage-title">${p.title}</div>
     <div class="cars-passage-author">${p.author}</div>
     ${p.text.split('\n\n').map(par => `<p>${par}</p>`).join('')}
   `;
-  $('#cars-questions').innerHTML = p.questions.map((q, qi) => `
+  qs('#cars-questions').innerHTML = p.questions.map((q, qi) => `
     <div class="quiz-q">${qi+1}. ${q.q}</div>
     <div class="quiz-choices" data-qi="${qi}">
       ${q.choices.map((c,ci) => `
@@ -1147,7 +1147,7 @@ function startCars(i){
     </div>
   `).join('');
 
-  $$('.cars-choice').forEach(b => {
+  qsa('.cars-choice').forEach(b => {
     b.addEventListener('click', () => {
       if(state.carsAnswersShown) return;
       const qi = parseInt(b.dataset.qi);
@@ -1158,11 +1158,11 @@ function startCars(i){
 
       // If all answered, show "See Results"
       if(Object.keys(state.carsAnswered).length === p.questions.length){
-        $('#cars-score').classList.remove('hidden');
+        qs('#cars-score').classList.remove('hidden');
       }
     });
   });
-  $('#cars-score').addEventListener('click', gradeCars);
+  qs('#cars-score').addEventListener('click', gradeCars);
 
   updateCarsTime();
   if(state.carsTimer) clearInterval(state.carsTimer);
@@ -1179,7 +1179,7 @@ function startCars(i){
 function updateCarsTime(){
   const m = Math.floor(state.carsTimeLeft/60);
   const s = state.carsTimeLeft%60;
-  const el = $('#cars-time');
+  const el = qs('#cars-time');
   el.textContent = `${m}:${s.toString().padStart(2,'0')}`;
   el.classList.toggle('warning', state.carsTimeLeft < 60);
 }
@@ -1193,7 +1193,7 @@ function gradeCars(){
   p.questions.forEach((q, qi) => {
     const userChoice = state.carsAnswered[qi];
     const correctIdx = q.answer;
-    $$(`.cars-choice[data-qi="${qi}"]`).forEach((b, ci) => {
+    qsa(`.cars-choice[data-qi="${qi}"]`).forEach((b, ci) => {
       b.disabled = true;
       const idx = parseInt(b.dataset.ci);
       if(idx === correctIdx) b.classList.add('correct');
@@ -1204,7 +1204,7 @@ function gradeCars(){
   });
 
   // Scroll to top of questions
-  $('#cars-score').classList.add('hidden');
+  qs('#cars-score').classList.add('hidden');
   const scoreEl = document.createElement('div');
   scoreEl.className = 'card-flat mt-16';
   scoreEl.style.textAlign='center';
@@ -1218,10 +1218,10 @@ function gradeCars(){
       <button class="btn" id="cars-another">Try Another Passage</button>
     </div>
   `;
-  $('#cars-questions').before(scoreEl);
+  qs('#cars-questions').before(scoreEl);
   scoreEl.scrollIntoView({behavior:'smooth', block:'center'});
-  $('#cars-again').addEventListener('click', () => startCars(state.carsCurrentPassage));
-  $('#cars-another').addEventListener('click', () => {
+  qs('#cars-again').addEventListener('click', () => startCars(state.carsCurrentPassage));
+  qs('#cars-another').addEventListener('click', () => {
     renderCars();
   });
 }
@@ -1230,11 +1230,11 @@ function gradeCars(){
    STUDY SCHEDULE BUILDER
    =========================================================== */
 function computeSchedule(){
-  const hoursPerWeek = parseInt($('#hours-week')?.value || 20);
-  const startDate = new Date($('#start-date')?.value || new Date());
+  const hoursPerWeek = parseInt(qs('#hours-week')?.value || 20);
+  const startDate = new Date(qs('#start-date')?.value || new Date());
   const testDate = state.testDate;
-  const targetScore = parseInt($('#target-score')?.value || 515);
-  const baseline = parseInt($('#baseline')?.value || 500);
+  const targetScore = parseInt(qs('#target-score')?.value || 515);
+  const baseline = parseInt(qs('#baseline')?.value || 500);
 
   const totalDays = Math.max(30, Math.ceil((testDate - startDate)/(1000*60*60*24)));
   const totalWeeks = Math.ceil(totalDays/7);
@@ -1448,17 +1448,17 @@ function renderSchedule(){
     drawSchedule();
   }
 
-  $('#gen-schedule').addEventListener('click', () => {
+  qs('#gen-schedule').addEventListener('click', () => {
     schedule = computeSchedule();
     drawSchedule();
   });
-  $('#save-schedule').addEventListener('click', () => {
+  qs('#save-schedule').addEventListener('click', () => {
     if(schedule){
       localStorage.setItem('mcat-schedule', JSON.stringify(schedule));
       showToast('💾 Schedule saved to your browser!');
     }
   });
-  $('#reset-schedule').addEventListener('click', () => {
+  qs('#reset-schedule').addEventListener('click', () => {
     if(confirm('Reset all custom edits and regenerate?')){
       schedule = computeSchedule();
       drawSchedule();
@@ -1467,7 +1467,7 @@ function renderSchedule(){
 }
 
 function drawSchedule(){
-  const out = $('#schedule-output');
+  const out = qs('#schedule-output');
   if(!out) return;
 
   const p1Start = new Date(schedule.startDate);
@@ -1505,7 +1505,7 @@ function drawSchedule(){
   `;
 
   // Edit buttons
-  $$('.week-item').forEach(item => {
+  qsa('.week-item').forEach(item => {
     item.addEventListener('click', () => editWeek(item));
   });
 }
@@ -1565,12 +1565,13 @@ function editWeek(item){
    POMODORO TIMER
    =========================================================== */
 function initPomodoro(){
-  $('#pomodoro-fab').addEventListener('click', openPomodoro);
+  const fab = qs('#pomodoro-fab');
+  if(fab) fab.addEventListener('click', openPomodoro);
 }
 
 function openPomodoro(){
   // Close any existing
-  let modal = $('#pomodoro-modal');
+  let modal = qs('#pomodoro-modal');
   if(!modal){
     modal = document.createElement('div');
     modal.className = 'pomodoro-modal';
@@ -1602,11 +1603,11 @@ function openPomodoro(){
     `;
     document.body.appendChild(modal);
 
-    $('#pom-start').addEventListener('click', togglePom);
-    $('#pom-reset').addEventListener('click', resetPom);
-    $$('.pom-mode').forEach(b => b.addEventListener('click', () => {
+    qs('#pom-start').addEventListener('click', togglePom);
+    qs('#pom-reset').addEventListener('click', resetPom);
+    qsa('.pom-mode').forEach(b => b.addEventListener('click', () => {
       state.pomMode = b.dataset.mode;
-      $$('.pom-mode').forEach(x => x.classList.toggle('active', x.dataset.mode === state.pomMode));
+      qsa('.pom-mode').forEach(x => x.classList.toggle('active', x.dataset.mode === state.pomMode));
       resetPom();
     }));
   }
@@ -1615,7 +1616,7 @@ function openPomodoro(){
 
 function togglePom(){
   state.pomRunning = !state.pomRunning;
-  const btn = $('#pom-start');
+  const btn = qs('#pom-start');
   if(state.pomRunning){
     btn.innerHTML = '⏸ Pause';
     if(state.pomInterval) clearInterval(state.pomInterval);
@@ -1641,30 +1642,32 @@ function resetPom(){
   clearInterval(state.pomInterval);
   state.pomRunning = false;
   state.pomTimeLeft = POM_MODES[state.pomMode].sec;
-  const btn = $('#pom-start');
+  const btn = qs('#pom-start');
   if(btn) btn.innerHTML = '▶ Start';
-  $('#pom-label').textContent = POM_MODES[state.pomMode].label + ' Session';
+  const lbl = qs('#pom-label');
+  if(lbl) lbl.textContent = POM_MODES[state.pomMode].label + ' Session';
   updatePomDisplay();
 }
 
 function updatePomDisplay(){
   const m = Math.floor(state.pomTimeLeft/60);
   const s = state.pomTimeLeft%60;
-  $('#pom-time').textContent = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+  const pt = qs('#pom-time');
+  if(pt) pt.textContent = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
   const total = POM_MODES[state.pomMode].sec;
   const frac = state.pomTimeLeft/total;
   const circ = 2*Math.PI*85; // ~534
-  const fg = $('#pom-fg');
-  fg.style.strokeDashoffset = circ*(1-frac);
+  const fg = qs('#pom-fg');
+  if(fg) fg.style.strokeDashoffset = circ*(1-frac);
 }
 
 /* ===========================================================
    TOAST NOTIFICATIONS
    =========================================================== */
 function showToast(text, src=''){
-  const toast = $('#quote-toast');
-  $('#quote-text').textContent = text;
-  $('#quote-src').textContent = src;
+  const toast = qs('#quote-toast');
+  qs('#quote-text').textContent = text;
+  qs('#quote-src').textContent = src;
   toast.classList.add('show');
   setTimeout(() => toast.classList.remove('show'), 4500);
 }
@@ -1747,13 +1750,13 @@ function renderTasks(){
     </section>
   `;
 
-  $('#add-task-btn').addEventListener('click', addTaskFromInput);
+  qs('#add-task-btn').addEventListener('click', addTaskFromInput);
   bindTaskEvents();
   saveTasks();
 }
 
 function addTaskFromInput(){
-  const inp = $('#new-task');
+  const inp = qs('#new-task');
   const txt = inp.value.trim();
   if(!txt) return;
   const today = todayKey();
@@ -1800,19 +1803,19 @@ function renderTaskDay(k){
 function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
 function bindTaskEvents(){
-  $$('.task-check').forEach(el => el.addEventListener('click', () => {
+  qsa('.task-check').forEach(el => el.addEventListener('click', () => {
     const day = el.dataset.day;
     const id = +el.dataset.toggle;
     const t = state.tasks[day].find(x=>x.id===id);
     if(t){ t.done = !t.done; saveTasks(); renderTasks(); if(t.done) playSound('correct');}
   }));
-  $$('.task-del').forEach(el => el.addEventListener('click', () => {
+  qsa('.task-del').forEach(el => el.addEventListener('click', () => {
     const day = el.dataset.day;
     const id = +el.dataset.del;
     state.tasks[day] = state.tasks[day].filter(x=>x.id!==id);
     saveTasks(); renderTasks();
   }));
-  $$('.add-task-quick').forEach(btn => btn.addEventListener('click', () => {
+  qsa('.add-task-quick').forEach(btn => btn.addEventListener('click', () => {
     const day = btn.dataset.day;
     const inp = document.querySelector('.add-task-input[data-day="'+day+'"]');
     const v = inp.value.trim(); if(!v) return;
@@ -1820,7 +1823,7 @@ function bindTaskEvents(){
     state.tasks[day].push({text:v,done:false,id:Date.now()});
     saveTasks(); renderTasks();
   }));
-  const sound = $('#sound-toggle');
+  const sound = qs('#sound-toggle');
   if(sound){
     sound.classList.toggle('on', state.soundOn);
     sound.addEventListener('click', () => {
@@ -1857,7 +1860,7 @@ function renderLab(){
     const filt = LAB_TECHNIQUES.filter(l =>
       (cat==='All'||l.cat===cat) &&
       (q===''||(l.title+l.what+l.keypoints+l.reagents).toLowerCase().includes(q.toLowerCase())));
-    $('#lab-grid').innerHTML = filt.map(l => `
+    qs('#lab-grid').innerHTML = filt.map(l => `
       <div class="lab-card">
         <div class="lab-cat">${l.cat}</div>
         <div class="lab-title">${l.title}</div>
@@ -1871,11 +1874,11 @@ function renderLab(){
   }
   drawLab();
   let cur='All';
-  $('#lab-search').addEventListener('input', e => drawLab(cur, e.target.value));
-  $$('#lab-cats .cat-chip').forEach(c => c.addEventListener('click', () => {
-    $$('#lab-cats .cat-chip').forEach(x=>x.classList.remove('active'));
+  qs('#lab-search').addEventListener('input', e => drawLab(cur, e.target.value));
+  qsa('#lab-cats .cat-chip').forEach(c => c.addEventListener('click', () => {
+    qsa('#lab-cats .cat-chip').forEach(x=>x.classList.remove('active'));
     c.classList.add('active'); cur=c.dataset.cat;
-    drawLab(cur, $('#lab-search').value);
+    drawLab(cur, qs('#lab-search').value);
   }));
 }
 
@@ -1909,19 +1912,19 @@ function renderCalc(){
       </div>
     </section>
   `;
-  $$('.calc-compute').forEach(b => b.addEventListener('click', () => {
+  qsa('.calc-compute').forEach(b => b.addEventListener('click', () => {
     const id = b.dataset.calc;
     const calc = CALCULATORS.find(x=>x.id===id);
     const inputs = document.querySelectorAll('.calc-card[data-calc="'+id+'"] .calc-input');
     const vals = {};
     inputs.forEach(i => vals[i.dataset.key] = i.value);
-    const res = $('#calc-result-'+id);
+    const res = qs('#calc-result-'+id);
     res.classList.remove('hidden');
     res.innerHTML = calc.compute(vals);
     playSound('tick');
   }));
   // Auto-compute on load
-  $$('.calc-compute').forEach(b => b.click());
+  qsa('.calc-compute').forEach(b => b.click());
 }
 
 /* ===========================================================
@@ -2005,7 +2008,7 @@ function renderScores(){
   `;
 
   // Bind score input events
-  $$('#score-rows tr').forEach(tr => {
+  qsa('#score-rows tr').forEach(tr => {
     const idx = +tr.dataset.idx;
     tr.querySelectorAll('.score-input').forEach(inp => {
       inp.addEventListener('change', () => {
@@ -2029,15 +2032,15 @@ function renderScores(){
       }
     });
   });
-  $('#target-input').addEventListener('change', e => {
+  qs('#target-input').addEventListener('change', e => {
     state.flScores.target = +e.target.value;
     saveScores(); renderScores();
   });
-  $('#add-exam').addEventListener('click', () => {
+  qs('#add-exam').addEventListener('click', () => {
     state.flScores.exams.push({name:'New Exam',company:'Other',plannedDate:'',score:''});
     saveScores(); renderScores();
   });
-  $('#reset-exams').addEventListener('click', () => {
+  qs('#reset-exams').addEventListener('click', () => {
     if(confirm('Reset exam list to defaults? This will clear your scores.')){
       state.flScores = {target:state.flScores.target||515, exams: FL_EXAMS_DEFAULT.map(e=>({...e}))};
       saveScores(); renderScores();
@@ -2144,12 +2147,22 @@ function renderDuas(){
 }
 
 /* ---------- Initialize ---------- */
-initTheme();
-initPomodoro();
-resetPom();
-renderDashboard(); // start on dashboard
-
-// Welcome toast
-setTimeout(() => {
-  showToast('Welcome! Open the pomodoro timer (bottom right) to start studying. May Allah make it beneficial for you.', '— Built for your MCAT journey');
-}, 800);
+function initApp(){
+  // Bind navigation
+  qsa('.nav-link').forEach(btn => {
+    btn.addEventListener('click', () => navigate(btn.dataset.section));
+  });
+  initTheme();
+  initPomodoro();
+  resetPom();
+  renderDashboard(); // start on dashboard
+  // Welcome toast
+  setTimeout(() => {
+    showToast('Welcome! Open the pomodoro timer (bottom right) to start studying. May Allah make it beneficial for you.', '— Built for your MCAT journey');
+  }, 800);
+}
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
