@@ -7,6 +7,94 @@ const $ = sel => document.querySelector(sel);
 const $$ = sel => document.querySelectorAll(sel);
 const app = $('#app');
 
+// Apply theme on load
+if(state.lightTheme) document.body.classList.add('light');
+
+/* ---------- Sound (Web Audio API — correct/wrong chimes) ---------- */
+let audioCtx;
+function playSound(type){
+  if(!state.soundOn) return;
+  try{
+    if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    const ctx = audioCtx;
+    if(type === 'correct'){
+      // Ascending triad
+      [523.25, 659.25, 783.99].forEach((f,i) => {
+        const o = ctx.createOscillator(); const g = ctx.createGain();
+        o.type='sine'; o.frequency.value=f;
+        o.connect(g); g.connect(ctx.destination);
+        const t = ctx.currentTime + i*0.08;
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.15, t+0.02);
+        g.gain.exponentialRampToValueAtTime(0.001, t+0.3);
+        o.start(t); o.stop(t+0.3);
+      });
+    } else if(type === 'wrong'){
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      o.type='sawtooth'; o.frequency.value=220;
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.exponentialRampToValueAtTime(150, ctx.currentTime+0.25);
+      g.gain.setValueAtTime(0.1, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.3);
+      o.start(); o.stop(ctx.currentTime+0.3);
+    } else if(type === 'complete'){
+      [523, 659, 784, 1047].forEach((f,i) => {
+        const o = ctx.createOscillator(); const g = ctx.createGain();
+        o.type='triangle'; o.frequency.value=f;
+        o.connect(g); g.connect(ctx.destination);
+        const t = ctx.currentTime + i*0.1;
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.15, t+0.03);
+        g.gain.exponentialRampToValueAtTime(0.001, t+0.5);
+        o.start(t); o.stop(t+0.5);
+      });
+    } else if(type === 'tick'){
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      o.type='sine'; o.frequency.value=800;
+      o.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(0.05, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.1);
+      o.start(); o.stop(ctx.currentTime+0.1);
+    }
+  }catch(e){}
+}
+
+/* ---------- Date helpers ---------- */
+function dateKey(d){
+  const dt = (d instanceof Date)?d:new Date(d);
+  return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+}
+function todayKey(){return dateKey(new Date());}
+function parseKey(k){const [y,m,d]=k.split('-').map(Number); return new Date(y,m-1,d);}
+function formatDate(d){
+  const dt = typeof d === 'string'?parseKey(d):d;
+  return dt.toLocaleDateString('en-US',{weekday:'short', month:'short', day:'numeric'});
+}
+function getStreak(){
+  let streak=0;
+  let d = new Date();
+  while(state.tasks[dateKey(d)] && state.tasks[dateKey(d)].filter(t=>t.done).length>0){
+    streak++;
+    d.setDate(d.getDate()-1);
+  }
+  return streak;
+}
+
+/* ---------- Theme toggle ---------- */
+function initTheme(){
+  const btn = $('#theme-toggle-btn');
+  btn.textContent = state.lightTheme ? '☀️' : '🌙';
+  btn.addEventListener('click', () => {
+    state.lightTheme = !state.lightTheme;
+    document.body.classList.toggle('light', state.lightTheme);
+    btn.textContent = state.lightTheme ? '☀️' : '🌙';
+    localStorage.setItem('mcat-theme', state.lightTheme?'light':'dark');
+  });
+}
+
+function saveTasks(){localStorage.setItem('mcat-tasks', JSON.stringify(state.tasks));}
+function saveScores(){localStorage.setItem('mcat-fl-scores', JSON.stringify(state.flScores));}
+
 /* ---------- State ---------- */
 const state = {
   testDate: new Date('2027-09-03T08:00:00'),
@@ -19,15 +107,20 @@ const state = {
   quizScore: 0,
   quizAnswered: false,
   quizShuffled: [],
+  quizCategories: {}, // tracks correct/total by category for weak area
   carsCurrentPassage: null,
   carsTimer: null,
   carsTimeLeft: 0,
   carsAnswered: {},
   carsAnswersShown: false,
-  pomMode: 'focus', // focus, short, long
+  pomMode: 'focus',
   pomRunning: false,
   pomTimeLeft: 25*60,
   pomInterval: null,
+  soundOn: localStorage.getItem('mcat-sound') !== 'false',
+  lightTheme: localStorage.getItem('mcat-theme') === 'light',
+  tasks: JSON.parse(localStorage.getItem('mcat-tasks') || '{}'),
+  flScores: JSON.parse(localStorage.getItem('mcat-fl-scores') || 'null'),
 };
 
 const POM_MODES = {
@@ -53,13 +146,18 @@ function render(){
   switch(state.currentSection){
     case 'dashboard': renderDashboard(); break;
     case 'schedule': renderSchedule(); break;
+    case 'tasks': renderTasks(); break;
     case 'amino': renderAmino(); break;
     case 'pathways': renderPathways(); break;
     case 'mnemonics': renderMnemonics(); break;
+    case 'lab': renderLab(); break;
     case 'formulas': renderFormulas(); break;
+    case 'calc': renderCalc(); break;
     case 'quiz': renderQuiz(); break;
     case 'cars': renderCars(); break;
     case 'psych': renderPsych(); break;
+    case 'scores': renderScores(); break;
+    case 'duas': renderDuas(); break;
     case 'timer': openPomodoro(); break;
   }
 }
@@ -67,6 +165,13 @@ function render(){
 /* ===========================================================
    DASHBOARD
    =========================================================== */
+function getDailyQuote(){
+  const today = new Date();
+  const start = new Date(today.getFullYear(),0,0);
+  const dayOfYear = Math.floor((today - start) / (1000*60*60*24));
+  return QUOTES[dayOfYear % QUOTES.length];
+}
+
 function renderDashboard(){
   const now = new Date();
   const diff = state.testDate - now;
@@ -82,7 +187,9 @@ function renderDashboard(){
   else if (days > 28){ phaseLabel = "Phase 2 — UWorld Practice"; phaseEmoji="⚡"; phaseColor="var(--purple)"; }
   else { phaseLabel = "Phase 3 — AAMC Refinement"; phaseEmoji="🎯"; phaseColor="var(--green)"; }
 
-  const quote = QUOTES[Math.floor(Math.random()*QUOTES.length)];
+  // Quote changes once per day (stable for 24h)
+  const quote = state._currentQuote || getDailyQuote();
+  state._currentQuote = quote;
 
   app.innerHTML = `
     <section class="section active">
@@ -115,6 +222,11 @@ function renderDashboard(){
       </div>
 
       <div class="stat-cards">
+        <div class="stat-card streak-pulse">
+          <div class="stat-icon">🔥</div>
+          <div class="stat-label">Study Streak</div>
+          <div class="stat-value" style="color:var(--orange)">${getStreak()}</div>
+        </div>
         <div class="stat-card">
           <div class="stat-icon">📖</div>
           <div class="stat-label">Amino Acids</div>
@@ -126,19 +238,19 @@ function renderDashboard(){
           <div class="stat-value">${MNEMONICS.length}</div>
         </div>
         <div class="stat-card">
-          <div class="stat-icon">⚡</div>
-          <div class="stat-label">Quiz Questions</div>
-          <div class="stat-value">${QUIZ_QUESTIONS.length}</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon">📐</div>
-          <div class="stat-label">Formulas</div>
-          <div class="stat-value">${FORMULAS.length}</div>
+          <div class="stat-icon">🔬</div>
+          <div class="stat-label">Lab Techniques</div>
+          <div class="stat-value">${LAB_TECHNIQUES.length}</div>
         </div>
       </div>
 
       <h2 style="margin-bottom:14px;">Quick Start</h2>
       <div class="quick-actions">
+        <button class="quick-action" data-jump="tasks">
+          <div class="qa-icon">✅</div>
+          <div class="qa-title">Daily Tasks</div>
+          <div class="qa-desc">Check off your to-dos, keep streak</div>
+        </button>
         <button class="quick-action" data-jump="schedule">
           <div class="qa-icon">📅</div>
           <div class="qa-title">Study Schedule</div>
@@ -147,17 +259,32 @@ function renderDashboard(){
         <button class="quick-action" data-jump="amino">
           <div class="qa-icon">🧬</div>
           <div class="qa-title">Amino Acid Explorer</div>
-          <div class="qa-desc">Memorize all 20 AAs</div>
+          <div class="qa-desc">Structures + facts + quiz</div>
         </button>
         <button class="quick-action" data-jump="quiz">
           <div class="qa-icon">⚡</div>
           <div class="qa-title">Quiz Bowl</div>
           <div class="qa-desc">Test your high-yield recall</div>
         </button>
+        <button class="quick-action" data-jump="scores">
+          <div class="qa-icon">📊</div>
+          <div class="qa-title">FL Score Tracker</div>
+          <div class="qa-desc">Chart your progress</div>
+        </button>
         <button class="quick-action" data-jump="mnemonics">
           <div class="qa-icon">💡</div>
           <div class="qa-title">Mnemonic Library</div>
           <div class="qa-desc">Tricks to remember everything</div>
+        </button>
+        <button class="quick-action" data-jump="lab">
+          <div class="qa-icon">🔬</div>
+          <div class="qa-title">Lab Techniques</div>
+          <div class="qa-desc">PCR, blots, chrom, ELISAs</div>
+        </button>
+        <button class="quick-action" data-jump="calc">
+          <div class="qa-icon">🧮</div>
+          <div class="qa-title">Physics Calculators</div>
+          <div class="qa-desc">Lens, HW, pH, pI, Beer</div>
         </button>
         <button class="quick-action" data-jump="pathways">
           <div class="qa-icon">🔄</div>
@@ -174,11 +301,15 @@ function renderDashboard(){
           <div class="qa-title">CARS Trainer</div>
           <div class="qa-desc">Timed passages + strategy</div>
         </button>
-        <button class="quick-action" data-jump="psych">
-          <div class="qa-icon">🧠</div>
-          <div class="qa-title">Psych/Soc Terms</div>
-          <div class="qa-desc">High-yield quick reference</div>
+        <button class="quick-action" data-jump="duas">
+          <div class="qa-icon">🤍</div>
+          <div class="qa-title">Du'as for Study</div>
+          <div class="qa-desc">Supplications for barakah</div>
         </button>
+      </div>
+      <div class="row mt-16" style="justify-content:flex-end;">
+        <span style="font-size:0.85rem; color:var(--text-mute);">Sound effects:</span>
+        <div class="switch ${state.soundOn?'on':''}" id="sound-toggle"></div>
       </div>
 
       <div class="mt-24 card-flat">
@@ -189,7 +320,7 @@ function renderDashboard(){
           <strong>(3)</strong> Spend the final month exclusively on AAMC materials under strict test conditions.
           It's designed to complement your existing Anki cards and books — not replace them.
           Use the Amino Acid Explorer and Mnemonics for daily active-recall drills, the Formula sheet when doing C/P passages,
-          and the Quiz Bowl for quick study breaks. May Allah make it easy and grant you success! 🤍</p>
+          and the Quiz Bowl for quick study breaks. May Allah make it easy and grant you success!</p>
       </div>
     </section>
   `;
@@ -223,9 +354,12 @@ function renderAmino(){
         <div class="group-tabs">
           ${groups.map(g => `<button class="group-tab ${state.aaFilter===g?'active':''}" data-group="${g}">${g}</button>`).join('')}
         </div>
-        <div class="toggle-row">
-          <span style="font-size:0.85rem;color:var(--text-dim);">Quiz Mode</span>
-          <div class="switch ${state.aaQuizMode?'on':''}" id="aa-quiz-toggle"></div>
+        <div class="row" style="gap:16px;">
+          <button class="btn btn-primary btn-sm" id="struct-quiz-btn">🔬 Structure Quiz</button>
+          <div class="toggle-row">
+            <span style="font-size:0.85rem;color:var(--text-dim);">Name Hide Mode</span>
+            <div class="switch ${state.aaQuizMode?'on':''}" id="aa-quiz-toggle"></div>
+          </div>
         </div>
       </div>
 
@@ -236,6 +370,10 @@ function renderAmino(){
 
     <div class="modal" id="aa-modal">
       <div class="modal-content" id="aa-modal-content"></div>
+    </div>
+
+    <div class="modal" id="struct-quiz-modal">
+      <div class="modal-content" id="struct-quiz-content" style="max-width:560px;"></div>
     </div>
   `;
 
@@ -267,6 +405,116 @@ function renderAmino(){
   if(state.aaQuizMode){
     $$('.aa-card .aa-name, .aa-card .aa-group').forEach(el => el.style.visibility = 'hidden');
   }
+
+  // Structure quiz button
+  $('#struct-quiz-btn').addEventListener('click', startStructureQuiz);
+}
+
+/* Structure identification quiz */
+let structQuiz = {idx:0, score:0, pool:[], total:0, answered:false};
+function startStructureQuiz(){
+  // Pick 10 random amino acids; each question shows the structure + 4 choices (one correct, three random distractors)
+  structQuiz.pool = shuffleArray(AMINO_ACIDS).slice(0,10);
+  structQuiz.idx = 0;
+  structQuiz.score = 0;
+  structQuiz.total = structQuiz.pool.length;
+  structQuiz.answered = false;
+  showStructureQuestion();
+}
+function showStructureQuestion(){
+  if(structQuiz.idx >= structQuiz.total){
+    return endStructureQuiz();
+  }
+  const aa = structQuiz.pool[structQuiz.idx];
+  // Pick 3 distractors from different amino acids
+  const distractors = shuffleArray(AMINO_ACIDS.filter(x => x.abbr !== aa.abbr)).slice(0,3);
+  const choices = shuffleArray([aa, ...distractors]);
+  const pct = (structQuiz.idx / structQuiz.total)*100;
+
+  const modal = $('#struct-quiz-modal');
+  const content = $('#struct-quiz-content');
+  content.innerHTML = `
+    <button class="modal-close" id="sq-close">×</button>
+    <div style="text-align:center;">
+      <div style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.12em; color:var(--purple); font-weight:700;">🔬 Structure Identification Quiz</div>
+      <h3 style="margin:6px 0 10px;">Identify this amino acid</h3>
+      <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:var(--text-mute); margin-bottom:8px;">
+        <span>Question ${structQuiz.idx+1} of ${structQuiz.total}</span>
+        <span>Score: ${structQuiz.score}/${structQuiz.idx}</span>
+      </div>
+      <div class="quiz-progress-bar" style="margin-bottom:14px;"><div class="quiz-progress-fill" style="width:${pct}%"></div></div>
+    </div>
+    <div style="display:grid; place-items:center; background:rgba(255,255,255,0.03); border-radius:${'var(--radius)'}; padding:10px; margin-bottom:14px; min-height:230px;">
+      ${drawAAStructure(aa, {width:300, height:220})}
+    </div>
+    <div class="quiz-choices" id="sq-choices">
+      ${choices.map((c,i) => `
+        <button class="quiz-choice" data-abbr="${c.abbr}">
+          <span class="choice-letter">${'ABCD'[i]}</span>
+          <span><strong>${c.abbr}</strong> — ${c.name} <span style="color:var(--text-mute); font-size:0.85rem;">(${c.group})</span></span>
+        </button>
+      `).join('')}
+    </div>
+    <div id="sq-explain"></div>
+  `;
+  modal.classList.add('open');
+  $('#sq-close').addEventListener('click', () => modal.classList.remove('open'));
+  $$('#sq-choices .quiz-choice').forEach(b => {
+    b.addEventListener('click', () => answerStructure(b, aa));
+  });
+}
+function answerStructure(btn, correctAA){
+  if(structQuiz.answered) return;
+  structQuiz.answered = true;
+  const picked = btn.dataset.abbr;
+  const right = picked === correctAA.abbr;
+  if(right) structQuiz.score++;
+
+  $$('#sq-choices .quiz-choice').forEach(b => {
+    b.disabled = true;
+    if(b.dataset.abbr === correctAA.abbr) b.classList.add('correct');
+    else if(b === btn) b.classList.add('wrong');
+  });
+  $('#sq-explain').innerHTML = `
+    <div class="quiz-explain" style="${right?'':'background:rgba(248,113,113,0.08); border-color:rgba(248,113,113,0.3);'}">
+      <strong>${right?'✅ Correct!':'❌ That was '+correctAA.name+' ('+correctAA.abbr+').'}</strong> ${correctAA.special.split(';')[0]}.
+    </div>
+    <div class="row" style="justify-content:center;">
+      <button class="btn btn-primary" id="sq-next">${structQuiz.idx+1>=structQuiz.total?'See Results':'Next →'}</button>
+    </div>
+  `;
+  $('#sq-next').addEventListener('click', () => {
+    structQuiz.idx++;
+    structQuiz.answered = false;
+    showStructureQuestion();
+  });
+}
+function endStructureQuiz(){
+  const pct = Math.round((structQuiz.score/structQuiz.total)*100);
+  let msg, emoji;
+  if(pct===100){emoji="🏆"; msg="Perfect score! You're ready for any amino acid question.";}
+  else if(pct>=80){emoji="🔥"; msg="Excellent! Structures are looking solid.";}
+  else if(pct>=60){emoji="💪"; msg="Good progress! Review the ones you missed and try again.";}
+  else{emoji="📚"; msg="Keep drilling — open the explorer and click each structure to learn.";}
+  const content = $('#struct-quiz-content');
+  content.innerHTML = `
+    <button class="modal-close" id="sq-close2">×</button>
+    <div style="text-align:center; padding:20px 0;">
+      <div style="font-size:4rem;">${emoji}</div>
+      <h2 style="margin-top:10px;">Structure Quiz Complete!</h2>
+      <div class="quiz-end-score" style="font-family:'Space Grotesk'; font-size:3.5rem; font-weight:700; background:linear-gradient(135deg,var(--purple),var(--pink)); -webkit-background-clip:text; background-clip:text; color:transparent; line-height:1.1;">
+        ${structQuiz.score}/${structQuiz.total}
+      </div>
+      <p style="margin:10px auto 20px; max-width:400px;">${pct}% correct. ${msg}</p>
+      <div class="row" style="justify-content:center; gap:8px;">
+        <button class="btn btn-primary" id="sq-again">🔬 Try Again</button>
+        <button class="btn" id="sq-browse">Browse AAs</button>
+      </div>
+    </div>
+  `;
+  $('#sq-close2').addEventListener('click', () => $('#struct-quiz-modal').classList.remove('open'));
+  $('#sq-again').addEventListener('click', startStructureQuiz);
+  $('#sq-browse').addEventListener('click', () => $('#struct-quiz-modal').classList.remove('open'));
 }
 
 function renderAACard(aa, idx){
@@ -291,29 +539,34 @@ function openAAModal(aa){
       <div style="font-size:1.2rem; font-weight:700;">${aa.name}</div>
       <div style="margin-left:auto; background:rgba(0,0,0,0.3); width:40px; height:40px; display:grid; place-items:center; border-radius:10px; font-family:'Space Grotesk'; font-size:1.3rem; font-weight:700; color:var(--text-mute);">${aa.one}</div>
     </div>
-    <div class="mb-16"><span class="badge" style="background:${aa.color}22; color:${aa.color}">${aa.group}</span> ${aa.aromatic ? '<span class="badge badge-pink">Aromatic</span>' : ''}</div>
+    <div class="mb-16"><span class="badge" style="background:${aa.color}22; color:${aa.color}">${aa.group}</span> ${aa.aromatic ? '<span class="badge badge-pink">Aromatic</span>' : ''} <span class="badge badge-cyan">L-configuration (zwitterion)</span></div>
 
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:16px;">
-      <div class="card-flat">
-        <div style="font-size:0.75rem; color:var(--text-mute); text-transform:uppercase; letter-spacing:0.1em;">Side Chain (R-group)</div>
-        <div style="font-family:'Space Grotesk'; font-size:1.1rem; margin-top:4px;">${aa.formula}</div>
+    <div class="card-flat" style="margin-bottom:14px; padding:8px; background:rgba(255,255,255,0.03); display:grid; place-items:center;">
+      <div style="font-size:0.7rem; color:var(--text-mute); text-transform:uppercase; letter-spacing:0.12em; margin-bottom:2px; margin-top:4px;">Chemical Structure @ pH 7.4</div>
+      ${drawAAStructure(aa, {width:300, height:220})}
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;">
+      <div class="card-flat" style="padding:12px;">
+        <div style="font-size:0.72rem; color:var(--text-mute); text-transform:uppercase; letter-spacing:0.1em;">Side Chain (R)</div>
+        <div style="font-family:'Space Grotesk'; font-size:1.05rem; margin-top:2px;">${aa.formula}</div>
       </div>
-      <div class="card-flat">
-        <div style="font-size:0.75rem; color:var(--text-mute); text-transform:uppercase; letter-spacing:0.1em;">Charge at pH 7.4</div>
-        <div style="font-family:'Space Grotesk'; font-size:1.1rem; margin-top:4px;">${aa.charge}</div>
+      <div class="card-flat" style="padding:12px;">
+        <div style="font-size:0.72rem; color:var(--text-mute); text-transform:uppercase; letter-spacing:0.1em;">Charge @ pH 7.4</div>
+        <div style="font-family:'Space Grotesk'; font-size:1.05rem; margin-top:2px;">${aa.charge}</div>
       </div>
-      <div class="card-flat">
-        <div style="font-size:0.75rem; color:var(--text-mute); text-transform:uppercase; letter-spacing:0.1em;">pKa (side chain)</div>
-        <div style="font-family:'Space Grotesk'; font-size:1.1rem; margin-top:4px;">${aa.pKa}</div>
+      <div class="card-flat" style="padding:12px;">
+        <div style="font-size:0.72rem; color:var(--text-mute); text-transform:uppercase; letter-spacing:0.1em;">pKa (R-group)</div>
+        <div style="font-family:'Space Grotesk'; font-size:1.05rem; margin-top:2px;">${aa.pKa}</div>
       </div>
-      <div class="card-flat">
-        <div style="font-size:0.75rem; color:var(--text-mute); text-transform:uppercase; letter-spacing:0.1em;">pI</div>
-        <div style="font-family:'Space Grotesk'; font-size:1.1rem; margin-top:4px;">${aa.pi}</div>
+      <div class="card-flat" style="padding:12px;">
+        <div style="font-size:0.72rem; color:var(--text-mute); text-transform:uppercase; letter-spacing:0.1em;">Isoelectric Pt (pI)</div>
+        <div style="font-family:'Space Grotesk'; font-size:1.05rem; margin-top:2px;">${aa.pi}</div>
       </div>
     </div>
 
     <div class="card-flat" style="background:rgba(167,139,250,0.08); border-color:rgba(167,139,250,0.3);">
-      <div style="font-size:0.75rem; color:var(--purple); text-transform:uppercase; letter-spacing:0.1em; font-weight:700; margin-bottom:6px;">🔑 High-Yield Connections</div>
+      <div style="font-size:0.72rem; color:var(--purple); text-transform:uppercase; letter-spacing:0.1em; font-weight:700; margin-bottom:6px;">🔑 High-Yield Connections</div>
       <div style="color:var(--text-dim); font-size:0.92rem;">${aa.special}</div>
     </div>
   `;
@@ -473,6 +726,7 @@ function renderQuiz(){
     state.quizIndex = 0;
     state.quizScore = 0;
     state.quizAnswered = false;
+    state.quizCategories = {};
   }
 
   const total = state.quizShuffled.length;
@@ -531,7 +785,17 @@ function answerQuiz(i, q){
   if(state.quizAnswered) return;
   state.quizAnswered = true;
   const correct = i === q.answer;
-  if(correct) state.quizScore++;
+  if(correct){
+    state.quizScore++;
+    playSound('correct');
+  } else {
+    playSound('wrong');
+  }
+  // Track category
+  const cat = q.cat || 'General';
+  if(!state.quizCategories[cat]) state.quizCategories[cat] = {correct:0,total:0};
+  state.quizCategories[cat].total++;
+  if(correct) state.quizCategories[cat].correct++;
 
   const choices = $$('.quiz-choice');
   choices.forEach((b, bi) => {
@@ -563,6 +827,14 @@ function renderQuizEnd(){
   else if(pct>=60){msg="Nice! Content gaps to address but you're on the right track."; emoji="💪";}
   else{msg="Content foundation still building — review these topics then try again!"; emoji="📚";}
 
+  // Find weakest categories
+  const cats = Object.entries(state.quizCategories).map(([name,d])=>({
+    name, pct: d.total?Math.round((d.correct/d.total)*100):100, correct:d.correct, total:d.total
+  })).sort((a,b)=>a.pct-b.pct);
+  const weak = cats.filter(c=>c.total>=2 && c.pct<70);
+
+  playSound('complete');
+
   app.innerHTML = `
     <section class="section active">
       <div class="quiz-container">
@@ -571,7 +843,32 @@ function renderQuizEnd(){
           <h1 style="margin-top:12px;">Quiz Complete!</h1>
           <div class="quiz-end-score">${state.quizScore}/${state.quizShuffled.length}</div>
           <p style="font-size:1.1rem; margin-top:8px;">${pct}% correct</p>
-          <p style="margin:14px 0 24px; max-width:450px;">${msg}</p>
+          <p style="margin:14px auto 24px; max-width:450px;">${msg}</p>
+
+          ${weak.length ? `
+            <div class="weak-panel" style="text-align:left; max-width:450px; margin:0 auto 20px;">
+              <h4>🎯 Focus Areas</h4>
+              <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom:8px;">Spend extra time reviewing these topics:</p>
+              <ul style="margin-left:18px;">
+                ${weak.map(w=>`<li style="font-size:0.88rem; color:var(--text-dim); margin-bottom:4px;"><strong style="color:var(--text);">${w.name}</strong> — ${w.correct}/${w.total} (${w.pct}%)</li>`).join('')}
+              </ul>
+            </div>
+          ` : ''}
+
+          <div style="max-width:450px; margin:0 auto 20px; text-align:left;">
+            <div style="font-size:0.75rem; color:var(--text-mute); text-transform:uppercase; letter-spacing:0.1em; font-weight:700; margin-bottom:8px;">Category Breakdown</div>
+            ${cats.map(c=>`
+              <div style="margin-bottom:6px;">
+                <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:3px;">
+                  <span>${c.name}</span><span style="color:var(--text-mute);">${c.correct}/${c.total}</span>
+                </div>
+                <div style="height:6px; background:rgba(255,255,255,0.08); border-radius:999px; overflow:hidden;">
+                  <div style="height:100%; width:${c.pct}%; background:linear-gradient(90deg,var(--purple),var(--pink)); border-radius:999px;"></div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
           <div class="row" style="justify-content:center; gap:10px;">
             <button class="btn btn-primary" id="quiz-again">↻ Play Again</button>
             <button class="btn" data-jump="mnemonics">Review Mnemonics</button>
@@ -583,6 +880,7 @@ function renderQuizEnd(){
   $('#quiz-again').addEventListener('click', () => {
     state.quizShuffled = shuffleArray(QUIZ_QUESTIONS);
     state.quizIndex = 0; state.quizScore = 0; state.quizAnswered = false;
+    state.quizCategories = {};
     renderQuiz();
   });
   document.querySelector('[data-jump="mnemonics"]').addEventListener('click', () => navigate('mnemonics'));
@@ -1371,17 +1669,487 @@ function showToast(text, src=''){
   setTimeout(() => toast.classList.remove('show'), 4500);
 }
 
-/* ---------- Live countdown tick ---------- */
+/* ---------- Live countdown tick (lightweight: updates numbers only, no full re-render) ---------- */
 setInterval(() => {
-  if(state.currentSection === 'dashboard') renderDashboard();
+  if(state.currentSection !== 'dashboard') return;
+  const now = new Date();
+  const diff = state.testDate - now;
+  if(diff <= 0) return;
+  const days = Math.floor(diff / (1000*60*60*24));
+  const hours = Math.floor((diff / (1000*60*60)) % 24);
+  const mins = Math.floor((diff / (1000*60)) % 60);
+  const secs = Math.floor((diff / 1000) % 60);
+  const bigDay = document.querySelector('.countdown-days');
+  const boxes = document.querySelectorAll('.countdown-box .countdown-num');
+  if(bigDay) bigDay.textContent = days;
+  if(boxes.length >= 4){
+    boxes[0].textContent = days;
+    boxes[1].textContent = hours;
+    boxes[2].textContent = mins;
+    boxes[3].textContent = secs;
+  }
+  // Also update phase badge if week boundary crossed (checks once per minute)
+  if(secs === 0 && document.querySelector('.countdown-card')){
+    // Phase recompute is rare enough that full re-render is fine once/min
+    renderDashboard();
+  }
 }, 1000);
 
+/* ===========================================================
+   TASKS / DAILY CHECKLIST WITH STREAK
+   =========================================================== */
+function renderTasks(){
+  const today = todayKey();
+  if(!state.tasks[today]) state.tasks[today] = [];
+  const todayTasks = state.tasks[today];
+
+  // Build 7 days view
+  const days = [];
+  for(let i=0;i<7;i++){
+    const d = new Date();
+    d.setDate(d.getDate()-i);
+    days.unshift(dateKey(d));
+  }
+
+  const streak = getStreak();
+  const doneToday = todayTasks.filter(t=>t.done).length;
+  const totalToday = todayTasks.length;
+
+  app.innerHTML = `
+    <section class="section active">
+      <div class="section-header">
+        <h1>✅ Daily Tasks & Streak</h1>
+        <p class="section-subtitle">Check off what you accomplished today. The streak motivates consistency — small daily wins beat cramming!</p>
+      </div>
+
+      <div class="grid grid-3 mb-16">
+        <div class="streak-card">
+          <div class="streak-flame">🔥</div>
+          <div class="streak-num">${streak}</div>
+          <div style="font-size:0.9rem; color:var(--text-dim);">day streak</div>
+          <p style="font-size:0.8rem; color:var(--text-mute); margin-top:8px;">${streak===0?'Complete at least one task today to start your streak!':streak<7?'Great momentum — keep going!':'MashaAllah, consistency is key!'}</p>
+        </div>
+        <div class="stat-card" style="grid-column:span 2;">
+          <div class="stat-label">Today (${formatDate(today)})</div>
+          <div class="stat-value" style="font-size:2.2rem;">${doneToday}/${totalToday}</div>
+          <p style="color:var(--text-dim); font-size:0.9rem; margin-top:6px;">
+            ${totalToday===0?'Add tasks below to get started for the day.':doneToday===totalToday?'MashaAllah, all tasks done today! 🎉':'You got this — keep pushing forward.'}
+          </p>
+          <div class="task-input-row" style="margin-top:14px;">
+            <input type="text" id="new-task" placeholder="Add a new task (e.g., 20 UWorld Bio, Anki reviews, 3 CARS passages)…" onkeypress="if(event.key==='Enter')addTaskFromInput()">
+            <button class="btn btn-primary" id="add-task-btn">+ Add</button>
+          </div>
+        </div>
+      </div>
+
+      <h2 style="margin-bottom:14px;">Last 7 Days</h2>
+      ${days.map(k => renderTaskDay(k)).join('')}
+    </section>
+  `;
+
+  $('#add-task-btn').addEventListener('click', addTaskFromInput);
+  bindTaskEvents();
+  saveTasks();
+}
+
+function addTaskFromInput(){
+  const inp = $('#new-task');
+  const txt = inp.value.trim();
+  if(!txt) return;
+  const today = todayKey();
+  if(!state.tasks[today]) state.tasks[today]=[];
+  state.tasks[today].push({text:txt, done:false, id:Date.now()});
+  saveTasks();
+  renderTasks();
+}
+
+function renderTaskDay(k){
+  const tasks = state.tasks[k] || [];
+  const done = tasks.filter(t=>t.done).length;
+  const isToday = k === todayKey();
+  const d = parseKey(k);
+  const isPast = d < new Date(new Date().toDateString());
+  return `
+    <div class="task-day" data-day="${k}">
+      <div class="task-day-header">
+        <div>
+          <div class="task-date">${isToday?'Today — ':''}${formatDate(d)}</div>
+          <div style="font-size:0.8rem; color:var(--text-mute);">${done}/${tasks.length} completed</div>
+        </div>
+        ${done===tasks.length && tasks.length>0 ? '<span class="badge badge-green">✓ Complete</span>' : ''}
+      </div>
+      <div class="task-list">
+        ${tasks.map(t => `
+          <div class="task-item ${t.done?'done':''}" data-id="${t.id}" data-day="${k}">
+            <div class="task-check" data-toggle="${t.id}" data-day="${k}">${t.done?'✓':''}</div>
+            <div class="task-text">${escapeHtml(t.text)}</div>
+            <button class="task-del" data-del="${t.id}" data-day="${k}" title="Delete">×</button>
+          </div>
+        `).join('')}
+      </div>
+      ${isToday ? `
+        <div class="task-input-row">
+          <input type="text" class="add-task-input" placeholder="Add task…" data-day="${k}">
+          <button class="btn btn-primary btn-sm add-task-quick" data-day="${k}">+</button>
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+
+function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+function bindTaskEvents(){
+  $$('.task-check').forEach(el => el.addEventListener('click', () => {
+    const day = el.dataset.day;
+    const id = +el.dataset.toggle;
+    const t = state.tasks[day].find(x=>x.id===id);
+    if(t){ t.done = !t.done; saveTasks(); renderTasks(); if(t.done) playSound('correct');}
+  }));
+  $$('.task-del').forEach(el => el.addEventListener('click', () => {
+    const day = el.dataset.day;
+    const id = +el.dataset.del;
+    state.tasks[day] = state.tasks[day].filter(x=>x.id!==id);
+    saveTasks(); renderTasks();
+  }));
+  $$('.add-task-quick').forEach(btn => btn.addEventListener('click', () => {
+    const day = btn.dataset.day;
+    const inp = document.querySelector('.add-task-input[data-day="'+day+'"]');
+    const v = inp.value.trim(); if(!v) return;
+    if(!state.tasks[day]) state.tasks[day]=[];
+    state.tasks[day].push({text:v,done:false,id:Date.now()});
+    saveTasks(); renderTasks();
+  }));
+  const sound = $('#sound-toggle');
+  if(sound){
+    sound.classList.toggle('on', state.soundOn);
+    sound.addEventListener('click', () => {
+      state.soundOn = !state.soundOn;
+      sound.classList.toggle('on', state.soundOn);
+      localStorage.setItem('mcat-sound', state.soundOn?'true':'false');
+    });
+  }
+}
+
+/* ===========================================================
+   LAB TECHNIQUES
+   =========================================================== */
+function renderLab(){
+  const cats = [...new Set(LAB_TECHNIQUES.map(l=>l.cat))];
+  app.innerHTML = `
+    <section class="section active">
+      <div class="section-header">
+        <h1>🔬 Lab Techniques Reference</h1>
+        <p class="section-subtitle">Every major lab technique tested on the MCAT — from PCR to ELISA to chromatography. High-yield connections included.</p>
+      </div>
+      <div class="search-bar">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="lab-search" placeholder="Search techniques (e.g., 'PCR', 'Western', 'chromatography')…">
+      </div>
+      <div class="cat-filter" id="lab-cats">
+        <button class="cat-chip active" data-cat="All">All</button>
+        ${cats.map(c=>`<button class="cat-chip" data-cat="${c}">${c}</button>`).join('')}
+      </div>
+      <div class="lab-grid" id="lab-grid"></div>
+    </section>
+  `;
+  function drawLab(cat='All', q=''){
+    const filt = LAB_TECHNIQUES.filter(l =>
+      (cat==='All'||l.cat===cat) &&
+      (q===''||(l.title+l.what+l.keypoints+l.reagents).toLowerCase().includes(q.toLowerCase())));
+    $('#lab-grid').innerHTML = filt.map(l => `
+      <div class="lab-card">
+        <div class="lab-cat">${l.cat}</div>
+        <div class="lab-title">${l.title}</div>
+        <div class="lab-what">${l.what}</div>
+        ${l.steps ? `<div class="lab-section-title">How it works</div><div class="lab-body">${l.steps}</div>` : ''}
+        ${l.reagents ? `<div class="lab-section-title">Key reagents / mnemonic</div><div class="lab-body">${l.reagents}</div>` : ''}
+        <div class="lab-section-title">🔑 High-Yield</div>
+        <div class="lab-body">${l.keypoints}</div>
+      </div>
+    `).join('');
+  }
+  drawLab();
+  let cur='All';
+  $('#lab-search').addEventListener('input', e => drawLab(cur, e.target.value));
+  $$('#lab-cats .cat-chip').forEach(c => c.addEventListener('click', () => {
+    $$('#lab-cats .cat-chip').forEach(x=>x.classList.remove('active'));
+    c.classList.add('active'); cur=c.dataset.cat;
+    drawLab(cur, $('#lab-search').value);
+  }));
+}
+
+/* ===========================================================
+   PHYSICS / CHEM CALCULATORS
+   =========================================================== */
+function renderCalc(){
+  app.innerHTML = `
+    <section class="section active">
+      <div class="section-header">
+        <h1>🧮 Calculators</h1>
+        <p class="section-subtitle">Quick calculators for high-yield physics and gen chem problem types.</p>
+      </div>
+      <div class="calc-grid" id="calc-grid">
+        ${CALCULATORS.map(c => `
+          <div class="calc-card" data-calc="${c.id}">
+            <div class="calc-title">${c.name}</div>
+            <div class="calc-desc">${c.desc}</div>
+            <div class="calc-fields">
+              ${c.fields.map(f=>{
+                if(f.type==='select'){
+                  return `<div class="calc-field"><label>${f.label}</label><select class="calc-input" data-key="${f.key}">${f.options.map(o=>`<option>${o}</option>`).join('')}</select></div>`;
+                }
+                return `<div class="calc-field"><label>${f.label}</label><input type="${f.type}" class="calc-input" data-key="${f.key}" value="${f.default}" ${f.step?'step="'+f.step+'"':''} ${f.min!==undefined?'min="'+f.min+'"':''} ${f.max!==undefined?'max="'+f.max+'"':''}></div>`;
+              }).join('')}
+            </div>
+            <button class="btn btn-primary btn-sm calc-compute" data-calc="${c.id}">Calculate</button>
+            <div class="calc-result hidden" id="calc-result-${c.id}"></div>
+          </div>
+        `).join('')}
+      </div>
+    </section>
+  `;
+  $$('.calc-compute').forEach(b => b.addEventListener('click', () => {
+    const id = b.dataset.calc;
+    const calc = CALCULATORS.find(x=>x.id===id);
+    const inputs = document.querySelectorAll('.calc-card[data-calc="'+id+'"] .calc-input');
+    const vals = {};
+    inputs.forEach(i => vals[i.dataset.key] = i.value);
+    const res = $('#calc-result-'+id);
+    res.classList.remove('hidden');
+    res.innerHTML = calc.compute(vals);
+    playSound('tick');
+  }));
+  // Auto-compute on load
+  $$('.calc-compute').forEach(b => b.click());
+}
+
+/* ===========================================================
+   FL SCORE TRACKER
+   =========================================================== */
+function renderScores(){
+  if(!state.flScores){
+    state.flScores = FL_EXAMS_DEFAULT.map(e => ({...e}));
+    saveScores();
+  }
+  // Add target score default
+  if(!state.flScores.target) state.flScores.target = 515;
+  // Backwards compat: split out target
+  let target = state.flScores.target || 515;
+  const exams = state.flScores.exams || state.flScores.filter ? state.flScores : state.flScores.exams;
+  // Migrate
+  if(Array.isArray(state.flScores)){
+    state.flScores = {target:515, exams: state.flScores};
+    saveScores();
+  }
+  target = state.flScores.target;
+  const examList = state.flScores.exams;
+
+  // Sort by planned date (if given)
+  const sorted = [...examList].sort((a,b)=>(a.plannedDate||'9999').localeCompare(b.plannedDate||'9999'));
+
+  // Chart data — plot only scored exams
+  const scored = sorted.filter(e=>e.score && !isNaN(+e.score)).map((e,i)=>({
+    name:e.name, score:+e.score, company:e.company,
+    date:e.plannedDate||i+1
+  }));
+
+  app.innerHTML = `
+    <section class="section active">
+      <div class="section-header">
+        <h1>📊 Full-Length Score Tracker</h1>
+        <p class="section-subtitle">Log your practice exam scores and watch your progress climb. Aim for a consistent upward trend — AAMC FLs (in green) are the most accurate predictors.</p>
+      </div>
+
+      <div class="chart-container">
+        <div class="flex-between mb-16">
+          <h3>Progress Over Time</h3>
+          <div class="row">
+            <label style="margin-bottom:0; font-size:0.85rem;">Target Score:</label>
+            <input type="number" id="target-input" value="${target}" min="472" max="528" style="width:80px;">
+          </div>
+        </div>
+        ${scored.length >= 1 ? drawScoreChart(scored, target) : '<p style="text-align:center; padding:40px; color:var(--text-mute);">Enter scores below to see your progress chart.</p>'}
+      </div>
+
+      <div class="card-flat">
+        <h3 style="margin-bottom:12px;">Practice Exams</h3>
+        <div style="overflow-x:auto;">
+        <table class="score-table">
+          <thead>
+            <tr><th>Exam</th><th>Company</th><th>Date Taken</th><th>Score (472–528)</th><th></th></tr>
+          </thead>
+          <tbody id="score-rows">
+            ${examList.map((e,i)=>`
+              <tr data-idx="${i}">
+                <td><input class="score-input" data-field="name" value="${escapeHtml(e.name)}"></td>
+                <td>
+                  <select class="score-input" data-field="company">
+                    ${['AAMC','Blueprint','Altius','Kaplan','Other'].map(c=>`<option ${e.company===c?'selected':''}>${c}</option>`).join('')}
+                  </select>
+                </td>
+                <td><input type="date" class="score-input" data-field="plannedDate" value="${e.plannedDate||''}"></td>
+                <td><input type="number" class="score-input" data-field="score" value="${e.score||''}" min="472" max="528" placeholder="—"></td>
+                <td><button class="btn btn-sm btn-ghost del-exam" data-idx="${i}">🗑</button></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        </div>
+        <div class="row mt-16" style="gap:8px;">
+          <button class="btn btn-sm" id="add-exam">+ Add Exam</button>
+          <button class="btn btn-sm btn-ghost" id="reset-exams">↺ Reset to defaults</button>
+        </div>
+      </div>
+    </section>
+  `;
+
+  // Bind score input events
+  $$('#score-rows tr').forEach(tr => {
+    const idx = +tr.dataset.idx;
+    tr.querySelectorAll('.score-input').forEach(inp => {
+      inp.addEventListener('change', () => {
+        const f = inp.dataset.field;
+        state.flScores.exams[idx][f] = inp.value;
+        saveScores();
+        renderScores();
+      });
+      inp.addEventListener('input', () => {
+        if(inp.type==='date' || inp.tagName==='SELECT'){
+          const f = inp.dataset.field;
+          state.flScores.exams[idx][f] = inp.value;
+          saveScores();
+        }
+      });
+    });
+    tr.querySelector('.del-exam').addEventListener('click', () => {
+      if(confirm('Delete this exam entry?')){
+        state.flScores.exams.splice(idx,1);
+        saveScores(); renderScores();
+      }
+    });
+  });
+  $('#target-input').addEventListener('change', e => {
+    state.flScores.target = +e.target.value;
+    saveScores(); renderScores();
+  });
+  $('#add-exam').addEventListener('click', () => {
+    state.flScores.exams.push({name:'New Exam',company:'Other',plannedDate:'',score:''});
+    saveScores(); renderScores();
+  });
+  $('#reset-exams').addEventListener('click', () => {
+    if(confirm('Reset exam list to defaults? This will clear your scores.')){
+      state.flScores = {target:state.flScores.target||515, exams: FL_EXAMS_DEFAULT.map(e=>({...e}))};
+      saveScores(); renderScores();
+    }
+  });
+}
+
+function drawScoreChart(scored, target){
+  const W=900, H=300;
+  const pad={t:20,r:30,b:40,l:50};
+  const iw=W-pad.l-pad.r, ih=H-pad.t-pad.b;
+  const minScore=472, maxScore=528;
+  const y = s => pad.t + ih - ((s-minScore)/(maxScore-minScore))*ih;
+  const x = i => iw * (i/Math.max(scored.length-1,1));
+  let poly='', pts=[];
+  scored.forEach((p,i)=>{
+    const px=pad.l+x(i), py=y(p.score);
+    pts.push({px,py,...p});
+    poly+= (i?' L':'M')+px+','+py;
+  });
+  const targetY = y(target);
+  return `
+    <svg class="chart-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+      <!-- gridlines -->
+      ${[472,485,500,510,515,520,528].map(s=>`
+        <line x1="${pad.l}" y1="${y(s)}" x2="${W-pad.r}" y2="${y(s)}" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+        <text x="${pad.l-8}" y="${y(s)+4}" fill="var(--text-mute)" font-size="11" text-anchor="end" font-family="Space Grotesk">${s}</text>
+      `).join('')}
+      <!-- target line -->
+      <line x1="${pad.l}" y1="${targetY}" x2="${W-pad.r}" y2="${targetY}" class="target-line"/>
+      <text x="${W-pad.r+4}" y="${targetY+4}" fill="var(--green)" font-size="11" font-family="Space Grotesk">Target ${target}</text>
+      <!-- area fill -->
+      ${pts.length>1?`<path d="${poly} L${pts[pts.length-1].px},${H-pad.b} L${pts[0].px},${H-pad.b} Z" fill="url(#grad)" opacity="0.3"/>`:''}
+      <defs>
+        <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#ec4899"/>
+          <stop offset="100%" stop-color="#a78bfa" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <!-- line -->
+      ${pts.length>1?`<path d="${poly}" fill="none" stroke="url(#gradline)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`:''}
+      <defs>
+        <linearGradient id="gradline" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#a78bfa"/>
+          <stop offset="100%" stop-color="#ec4899"/>
+        </linearGradient>
+      </defs>
+      <!-- points -->
+      ${pts.map(p=>`
+        <circle cx="${p.px}" cy="${p.py}" r="7" fill="${p.company==='AAMC'?'#34d399':(p.company==='Blueprint'?'#60a5fa':'#a78bfa')}" stroke="white" stroke-width="2"/>
+        <text x="${p.px}" y="${p.py-14}" fill="var(--text)" font-size="11" font-weight="700" text-anchor="middle" font-family="Space Grotesk">${p.score}</text>
+      `).join('')}
+      <!-- axis -->
+      <line x1="${pad.l}" y1="${pad.t}" x2="${pad.l}" y2="${H-pad.b}" stroke="var(--border)" stroke-width="1"/>
+      <line x1="${pad.l}" y1="${H-pad.b}" x2="${W-pad.r}" y2="${H-pad.b}" stroke="var(--border)" stroke-width="1"/>
+      <text x="${pad.l-32}" y="${pad.t+ih/2}" fill="var(--text-mute)" font-size="11" text-anchor="middle" transform="rotate(-90 ${pad.l-32} ${pad.t+ih/2})" font-family="Space Grotesk">Score</text>
+    </svg>
+    <div style="display:flex; gap:12px; justify-content:center; margin-top:8px; font-size:0.8rem; color:var(--text-mute);">
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--green);vertical-align:middle;margin-right:4px;"></span>AAMC (most accurate)</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--blue);vertical-align:middle;margin-right:4px;"></span>Blueprint</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--purple);vertical-align:middle;margin-right:4px;"></span>Other 3rd party</span>
+    </div>
+  `;
+}
+
+/* ===========================================================
+   DU'AS
+   =========================================================== */
+function renderDuas(){
+  app.innerHTML = `
+    <section class="section active">
+      <div class="section-header">
+        <h1>🤍 Du'as for Seeking Knowledge & Exams</h1>
+        <p class="section-subtitle">A collection of supplications from the Qur'an and Sunnah to seek Allah's help in your studies. May Allah accept and make your journey easy.</p>
+      </div>
+      <div class="card-flat mb-16" style="border-color:var(--green);">
+        <p style="font-size:0.92rem;">The Prophet ﷺ said: <em>"Whoever travels a path seeking knowledge, Allah will make easy for them a path to Paradise."</em> (Sahih Muslim). Make du'a with sincerity, work hard, and put your trust in Allah.</p>
+      </div>
+      <div class="dua-grid">
+        ${DUAS.map(d=>`
+          <div class="dua-card">
+            <div class="dua-title">${d.title}</div>
+            ${d.arabic?`<div class="dua-arabic">${d.arabic}</div>`:''}
+            ${d.translit?`<div class="dua-translit">${d.translit}</div>`:''}
+            <div class="dua-meaning">${d.meaning}</div>
+            ${d.note?`<div class="dua-note">${d.note}</div>`:''}
+          </div>
+        `).join('')}
+      </div>
+      <div class="card-flat mt-24">
+        <h3 style="margin-bottom:8px;">💡 Practical tips for barakah in your studies</h3>
+        <ul style="margin-left:20px; color:var(--text-dim); font-size:0.9rem; line-height:1.8;">
+          <li>Pray your five daily prayers on time — this is the foundation of all success.</li>
+          <li>Make du'a in the last third of the night and between adhan and iqamah (times of acceptance).</li>
+          <li>Send salah (blessings) upon the Prophet ﷺ abundantly.</li>
+          <li>Begin studying with "Bismillah" and end with gratitude (Alhamdulillah).</li>
+          <li>Give charity (sadaqah) regularly — sadaqah repels calamity and opens doors.</li>
+          <li>Ask Allah to make what you learn a benefit, and to keep you sincere — knowledge that doesn't benefit is a weight.</li>
+          <li>Your parents' du'a is one of the fastest accepted — keep them happy!</li>
+        </ul>
+      </div>
+    </section>
+  `;
+}
+
 /* ---------- Initialize ---------- */
+initTheme();
 initPomodoro();
 resetPom();
 renderDashboard(); // start on dashboard
 
 // Welcome toast
 setTimeout(() => {
-  showToast('Welcome! Open the pomodoro timer (bottom right) to start studying. May Allah make it beneficial for you 🤍', '— Built for your MCAT journey');
+  showToast('Welcome! Open the pomodoro timer (bottom right) to start studying. May Allah make it beneficial for you.', '— Built for your MCAT journey');
 }, 800);
