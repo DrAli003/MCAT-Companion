@@ -15,14 +15,13 @@
         t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
         y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
     })(window, document, "clarity", "script", "yroe07zo0j");
-</script>
+  </script>
   <script>
-  fetch('https://ntfy.sh/MCAT_Companion', {
-    method: 'POST',
-    body: 'Someone opened your website!'
-  });
-</script>
-
+    fetch('https://ntfy.sh/MCAT_Companion', {
+      method: 'POST',
+      body: 'Someone opened your website!'
+    });
+  </script>
 </head>
 <body>
 
@@ -53,7 +52,10 @@
     </div>
     <span>MCAT Companion</span>
   </div>
-  <div class="nav-links">
+  <button class="nav-toggle" id="nav-toggle" aria-label="Menu" aria-expanded="false">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+  </button>
+  <div class="nav-links" id="nav-links">
     <button class="nav-link active" data-section="dashboard">Dashboard</button>
     <button class="nav-link" data-section="schedule">Schedule</button>
     <button class="nav-link" data-section="tasks">Tasks</button>

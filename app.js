@@ -2482,11 +2482,36 @@ function renderDuas(){
 }
 
 /* ---------- Initialize ---------- */
+function initNavToggle(){
+  const toggle = qs('#nav-toggle');
+  const links = qs('#nav-links');
+  if(!toggle || !links) return;
+  toggle.addEventListener('click', ()=>{
+    const open = links.classList.toggle('open');
+    toggle.setAttribute('aria-expanded', open?'true':'false');
+  });
+  // Close menu when a link is tapped
+  qsa('.nav-link', links).forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      links.classList.remove('open');
+      toggle.setAttribute('aria-expanded','false');
+    });
+  });
+  // Close when tapping outside
+  document.addEventListener('click', (e)=>{
+    if(links.classList.contains('open') && !links.contains(e.target) && !toggle.contains(e.target)){
+      links.classList.remove('open');
+      toggle.setAttribute('aria-expanded','false');
+    }
+  });
+}
+
 function initApp(){
   // Bind navigation
   qsa('.nav-link').forEach(btn => {
     btn.addEventListener('click', () => navigate(btn.dataset.section));
   });
+  initNavToggle();
   initTheme();
   initPomodoro();
   resetPom();

@@ -845,3 +845,208 @@ body.light .dua-arabic{background:rgba(167,139,250,0.08);}
   50%{transform:scale(1.04);}
 }
 
+
+/* ============================================================
+   RESPONSIVE — Phones & Tablets
+   ============================================================ */
+
+/* Hamburger toggle — hidden on desktop */
+.nav-toggle{
+  display:none;
+  background:transparent; border:none; color:var(--text);
+  width:44px; height:44px; border-radius:12px;
+  cursor:pointer; align-items:center; justify-content:center;
+  transition:all 0.2s;
+}
+.nav-toggle:hover{background:var(--surface);}
+.nav-toggle svg{display:block;}
+
+/* ----- TABLETS (≤1024px) ----- */
+@media (max-width:1024px){
+  .navbar{padding:14px 20px;}
+  main{padding:24px 20px 100px;}
+  .grid-4{grid-template-columns:repeat(2,1fr);}
+}
+
+/* ----- SMALL TABLETS / LARGE PHONES (≤768px) ----- */
+@media (max-width:768px){
+  .navbar{
+    padding:12px 16px;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .nav-brand{font-size:1rem;}
+  .logo-icon{width:32px;height:32px;}
+
+  /* Hamburger menu */
+  .nav-toggle{display:inline-flex;}
+  .nav-links{
+    display:none;
+    flex-direction:column;
+    width:100%;
+    gap:2px;
+    padding:8px 0;
+    max-height:60vh;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  .nav-links.open{display:flex;}
+  .nav-link{
+    padding:12px 16px;
+    font-size:0.95rem;
+    text-align:left;
+    border-radius:10px;
+    width:100%;
+    justify-content:flex-start;
+  }
+  .nav-link.active{border-radius:10px;}
+
+  main{padding:18px 14px 100px;}
+  h1{font-size:1.7rem;}
+  h2{font-size:1.3rem;}
+  h3{font-size:1.05rem;}
+
+  /* All grids stack to 1 or 2 columns */
+  .grid-2,.grid-3,.grid-4{grid-template-columns:1fr;}
+  .stats-grid{grid-template-columns:repeat(2,1fr)!important;}
+  .ach-grid{grid-template-columns:repeat(3,1fr)!important;}
+
+  /* Card padding tighter */
+  .card,.card-flat,.dedication-card{padding:16px;}
+
+  /* Buttons full width in rows */
+  .row{flex-wrap:wrap;}
+  .btn{padding:12px 18px; font-size:0.9rem; min-height:44px;}
+  .row .btn{flex:1 1 auto;}
+
+  /* Amino acid cards grid */
+  .aa-grid, .formula-grid, .mnem-grid, .psych-grid, .tip-grid, .lab-grid{
+    grid-template-columns:1fr!important;
+  }
+
+  /* Score table — scroll horizontally */
+  .score-table-wrap, .table-wrap{overflow-x:auto; -webkit-overflow-scrolling:touch;}
+  .score-table{min-width:560px;}
+
+  /* Schedule week items */
+  .week-row{grid-template-columns:1fr!important;}
+  .week-num{min-width:auto!important;}
+
+  /* Quiz options */
+  .quiz-option{padding:14px 16px; font-size:0.95rem; min-height:48px;}
+
+  /* Modals take most of screen */
+  .modal-content, .pomodoro-modal, .levelup-card{
+    width:calc(100% - 24px)!important;
+    max-width:calc(100% - 24px)!important;
+    padding:20px!important;
+    margin:0 12px;
+    max-height:90vh;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  .modal-overlay{padding:0; align-items:flex-start; padding-top:40px;}
+  .pomodoro-modal{
+    right:8px; left:8px; top:70px; bottom:auto;
+    width:auto!important;
+  }
+
+  /* Quick actions - 2 columns */
+  .quick-actions{grid-template-columns:repeat(2,1fr)!important;}
+  .quick-action{padding:14px 10px; font-size:0.85rem; min-height:80px;}
+
+  /* Welcome overlay */
+  .welcome-card{padding:30px 22px; max-width:100%;}
+  .welcome-title{font-size:2rem;}
+
+  /* Journey timeline tighter */
+  .journey-timeline{padding-left:32px;}
+  .stat-big-val{font-size:1.5rem;}
+  .stat-big-card{padding:14px 10px;}
+
+  /* FAB - keep visible but smaller */
+  .fab{width:52px;height:52px;bottom:16px;right:16px;}
+
+  /* Du'a cards */
+  .dua-card{padding:16px;}
+  .dua-arabic{font-size:1.5rem;}
+
+  /* CARS passage */
+  .cars-passage{font-size:0.95rem; line-height:1.7; padding:16px;}
+  .cars-passage-container{max-height:40vh!important;}
+
+  /* Amino acid modal */
+  #aa-modal .modal-content{padding:16px!important;}
+  .aa-structure{transform:scale(0.9); transform-origin:top center; margin:-10px 0;}
+
+  /* Calc inputs */
+  .calc-grid{grid-template-columns:1fr!important;}
+  .uw-entry{grid-template-columns:1fr!important; gap:6px;}
+}
+
+/* ----- PHONES (≤480px) ----- */
+@media (max-width:480px){
+  main{padding:14px 10px 100px;}
+  h1{font-size:1.5rem;}
+  .section-header{margin-bottom:18px;}
+  .stats-grid{grid-template-columns:repeat(2,1fr)!important; gap:8px;}
+  .stat-big-card{padding:12px 6px;}
+  .stat-big-val{font-size:1.35rem;}
+  .stat-big-label{font-size:0.65rem;}
+  .ach-grid{grid-template-columns:repeat(3,1fr)!important; gap:6px;}
+  .ach-tile{padding:10px 4px;}
+  .ach-icon{font-size:1.4rem;}
+  .ach-name{font-size:0.65rem;}
+  .ach-desc{display:none;}
+  .nav-brand span{display:none;} /* hide "MCAT Companion" text, keep logo */
+  .quick-actions{grid-template-columns:repeat(2,1fr)!important; gap:8px;}
+  .quick-action span.label{font-size:0.72rem;}
+  .quick-action .qa-icon{font-size:1.6rem;}
+  /* Level banner */
+  .level-banner{padding:12px; gap:10px;}
+  .level-num{font-size:2rem;}
+  /* Journey */
+  .journey-stop{margin-bottom:20px; padding-left:14px;}
+  .journey-dot{left:-26px; width:24px; height:24px; font-size:0.8rem;}
+  /* Test-day sealed letter */
+  .dedication-card{padding:20px 16px;}
+  .dedication-body p{font-size:0.95rem;}
+  .countdown-days{font-size:2.5rem;}
+  .countdown-grid{grid-template-columns:repeat(2,1fr)!important;}
+  /* Dua arabic slightly smaller */
+  .dua-arabic{font-size:1.35rem;}
+  /* Inputs */
+  input, select, textarea{font-size:16px!important;} /* prevents iOS zoom */
+  /* Toasts */
+  .quote-toast{left:10px; right:10px; bottom:80px;}
+}
+
+/* ----- VERY SMALL PHONES (≤360px) — iPhone SE, old Android ----- */
+@media (max-width:380px){
+  .quick-actions{grid-template-columns:1fr 1fr!important;}
+  .ach-grid{grid-template-columns:repeat(2,1fr)!important;}
+  .nav-brand{gap:8px;}
+  h1{font-size:1.35rem;}
+}
+
+/* ----- LANDSCAPE PHONES ----- */
+@media (max-height:500px) and (orientation:landscape){
+  .pomodoro-modal{top:10px; bottom:10px; overflow-y:auto;}
+  .welcome-card{padding:20px;}
+  .welcome-title{font-size:1.8rem;}
+}
+
+/* Prevent text overflow everywhere */
+*{overflow-wrap:break-word; word-wrap:break-word;}
+pre, code{white-space:pre-wrap;}
+
+/* Smooth touch scrolling on iOS */
+html{-webkit-text-size-adjust:100%; -webkit-tap-highlight-color:transparent;}
+body{overscroll-behavior-y:contain;}
+button, .btn, .nav-link, .aa-card, .task-check{touch-action:manipulation;}
+input, select, textarea{font-size:16px;} /* iOS zoom prevention baseline */
+
+/* Larger touch targets on touch devices */
+@media (hover:none) and (pointer:coarse){
+  .nav-link, .btn, .task-check, .fab{min-height:44px; min-width:44px;}
+}
