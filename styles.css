@@ -137,8 +137,6 @@ p{color:var(--text-dim);}
 .grid-4{grid-template-columns: repeat(4,1fr);}
 @media (max-width: 900px){
   .grid-2,.grid-3,.grid-4{grid-template-columns:1fr;}
-  .navbar{padding:14px 16px; flex-direction:column; gap:10px;}
-  .nav-links{justify-content:center;}
   main{padding:20px 16px 80px;}
   h1{font-size:1.8rem;}
 }
@@ -648,10 +646,11 @@ label{font-size:0.85rem; font-weight:600; color:var(--text-dim); display:block; 
   .fab{bottom:max(20px, env(safe-area-inset-bottom)); right:max(16px, env(safe-area-inset-right));}
   .quote-toast{
     left:12px; right:12px; bottom:max(88px, calc(env(safe-area-inset-bottom) + 80px));
-    width:auto; max-width:none; transform:translateY(140%);
+    width:auto; max-width:none;
+    transform:translateY(140%) !important;
     padding:14px 40px 14px 16px;
   }
-  .quote-toast.show{transform:translateY(0);}
+  .quote-toast.show{transform:translateY(0) !important;}
   .quote-toast p{font-size:0.85rem;}
 }
 
@@ -885,16 +884,17 @@ body.light .dua-arabic{background:rgba(167,139,250,0.08);}
 /* ----- SMALL TABLETS / LARGE PHONES (≤768px) ----- */
 @media (max-width:768px){
   .navbar{
-    padding:max(12px, env(safe-area-inset-top)) 16px 12px;
+    padding:max(12px, env(safe-area-inset-top)) 16px 12px !important;
     flex-wrap:wrap;
     gap:0;
     align-items:center;
     justify-content:space-between;
-    flex-direction:row;
+    flex-direction:row !important;
   }
   .nav-brand{
-    font-size:1rem; flex:0 1 auto;
-    min-width:0;
+    font-size:1rem; flex:0 1 auto; order:1;
+    min-width:0; width:auto; margin:0;
+    justify-content:flex-start; text-align:left;
   }
   .nav-brand span{display:inline;}
   .logo-icon{width:32px;height:32px; flex-shrink:0;}
@@ -1046,8 +1046,7 @@ body.light .dua-arabic{background:rgba(167,139,250,0.08);}
   .dua-arabic{font-size:1.35rem;}
   /* Inputs */
   input, select, textarea{font-size:16px!important;} /* prevents iOS zoom */
-  /* Toasts */
-  .quote-toast{left:10px; right:10px; bottom:80px;}
+  /* Toasts already handled in 600px block */
 }
 
 /* ----- VERY SMALL PHONES (≤360px) — iPhone SE, old Android ----- */
