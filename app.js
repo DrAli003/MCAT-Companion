@@ -1994,7 +1994,12 @@ function showToast(text, src=''){
   qs('#quote-text').textContent = text;
   qs('#quote-src').textContent = src;
   toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 4500);
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => toast.classList.remove('show'), 5000);
+}
+function dismissToast(){
+  const toast = qs('#quote-toast');
+  if(toast){toast.classList.remove('show'); clearTimeout(toast._t);}
 }
 
 /* ---------- Live countdown tick (lightweight: updates numbers only, no full re-render) ---------- */
@@ -2515,6 +2520,11 @@ function initApp(){
   initTheme();
   initPomodoro();
   resetPom();
+  // Toast dismiss
+  const tc = qs('#toast-close');
+  if(tc) tc.addEventListener('click', dismissToast);
+  const tt = qs('#quote-toast');
+  if(tt) tt.addEventListener('click', e=>{ if(e.target===tt) dismissToast(); });
   renderDashboard(); // start on dashboard
   // Welcome toast
   setTimeout(() => {
