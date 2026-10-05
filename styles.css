@@ -590,24 +590,38 @@ label{font-size:0.85rem; font-weight:600; color:var(--text-dim); display:block; 
 
 /* ---------- Quote toast ---------- */
 .quote-toast{
-  position:fixed; bottom:30px; left:50%; transform: translateX(-50%) translateY(120%);
+  position:fixed;
+  bottom:max(96px, calc(env(safe-area-inset-bottom) + 88px));
+  left:50%;
+  transform: translateX(-50%) translateY(140%);
   background: linear-gradient(135deg, #1a1040, #2a1050);
   border:1px solid var(--border-strong);
-  border-radius:var(--radius);
-  padding:16px 44px 16px 20px; max-width:500px; width:calc(100% - 40px); z-index:300;
-  box-shadow:var(--shadow-lg);
+  border-radius:16px;
+  padding:16px 48px 16px 20px;
+  max-width:520px;
+  width:calc(100% - 32px);
+  z-index:300;
+  box-shadow:0 10px 40px rgba(0,0,0,0.4);
   transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  color:#fff;
+  box-sizing:border-box;
 }
 .quote-toast.show{transform:translateX(-50%) translateY(0);}
-.quote-toast p{font-style:italic; margin-bottom:4px; color:var(--text); font-size:0.9rem; padding-right:8px;}
-.quote-toast small{color:var(--purple); font-weight:600; font-size:0.78rem;}
+.quote-toast p{font-style:italic; margin:0 0 4px; color:#fff; font-size:0.9rem; padding-right:8px; line-height:1.5;}
+.quote-toast small{color:#c4b5fd; font-weight:600; font-size:0.78rem;}
 .toast-close{
   position:absolute; top:10px; right:10px;
-  background:transparent; border:none; color:var(--text-mute);
-  width:28px; height:28px; border-radius:8px; font-size:1.2rem;
+  background:rgba(255,255,255,0.1); border:none; color:#fff;
+  width:32px; height:32px; border-radius:8px; font-size:1.3rem;
   cursor:pointer; display:grid; place-items:center; line-height:1;
+  padding:0;
 }
-.toast-close:hover{background:rgba(255,255,255,0.1); color:var(--text);}
+.toast-close:hover{background:rgba(255,255,255,0.2); color:#fff;}
+body.light .quote-toast{background:#fff;border-color:rgba(30,20,70,0.15);box-shadow:0 10px 30px rgba(30,20,70,0.15);}
+body.light .quote-toast p{color:#1a0f3c;}
+body.light .quote-toast small{color:var(--purple);}
+body.light .toast-close{background:rgba(30,20,70,0.08);color:var(--text);}
+body.light .toast-close:hover{background:rgba(30,20,70,0.15);}
 
 /* badges */
 .badge{
@@ -645,12 +659,12 @@ label{font-size:0.85rem; font-weight:600; color:var(--text-dim); display:block; 
   .pomodoro-modal{right:10px; left:10px; width:auto;}
   .fab{bottom:max(20px, env(safe-area-inset-bottom)); right:max(16px, env(safe-area-inset-right));}
   .quote-toast{
-    left:12px; right:12px; bottom:max(88px, calc(env(safe-area-inset-bottom) + 80px));
+    left:12px; right:12px; bottom:max(96px, calc(env(safe-area-inset-bottom) + 88px));
     width:auto; max-width:none;
     transform:translateY(140%) !important;
-    padding:14px 40px 14px 16px;
+    padding:14px 44px 14px 16px;
   }
-  .quote-toast.show{transform:translateY(0) !important;}
+  .quote-toast.show{transform:translateY(0) !important;left:12px;right:12px;}
   .quote-toast p{font-size:0.85rem;}
 }
 
@@ -914,19 +928,29 @@ body.light .dua-arabic{background:rgba(167,139,250,0.08);}
     width:100%;
     flex-basis:100%;
     gap:2px;
-    padding:10px 0 4px;
-    max-height:60vh;
+    padding:10px 4px 4px;
+    max-height:65vh;
     overflow-y:auto;
+    overflow-x:hidden;
     -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
+    /* Force iOS to render scrollable area */
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
   }
-  .nav-links.open{display:flex;}
+  /* Make sure scrollbar is visible on iOS */
+  .nav-links::-webkit-scrollbar{width:4px;}
+  .nav-links::-webkit-scrollbar-thumb{background:rgba(167,139,250,0.3);border-radius:2px;}
+  .nav-links.open{display:block;}
   .nav-link{
-    padding:12px 16px;
-    font-size:0.95rem;
-    text-align:left;
-    border-radius:10px;
+    display:block;
     width:100%;
-    justify-content:flex-start;
+    text-align:left;
+    padding:14px 16px;
+    font-size:1rem;
+    border-radius:10px;
+    min-height:48px;
+    box-sizing:border-box;
   }
   .nav-link.active{border-radius:10px;}
 
