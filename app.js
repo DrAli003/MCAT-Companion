@@ -859,6 +859,12 @@ function renderTools(){
           <p>${(()=>{const p=projectScore();if(!p) return 'Log at least 2 full-length scores to see a trend.'; return `Last score: <strong>${p.last}</strong> · trending ${p.trend} · projected ~${p.projected} if you keep working like this.`;})()}</p>
           <button class="btn" data-jump="scores">Go to scores →</button>
         </div>
+        <div class="card tool-card" id="tool-sync">
+          <div class="tool-icon">🔄</div>
+          <h3>Sync & Backup</h3>
+          <p>Move your progress between your phone, laptop, and tablet. Everything: XP, scores, wins, wrong answers, letters, checklist, theme.</p>
+          <button class="btn">Sync devices / backup →</button>
+        </div>
       </div>
     </section>
   `;
@@ -867,6 +873,7 @@ function renderTools(){
   qs('#tool-selfletter').addEventListener('click',()=>showSelfLetterModal());
   qs('#tool-win').addEventListener('click',()=>showWinModal());
   qs('#tool-heatmap').addEventListener('click',()=>showHeatmapModal());
+  qs('#tool-sync').addEventListener('click',()=>showSyncModal());
   qsa('.accent-dot').forEach(b=>b.addEventListener('click',()=>{setAccent(b.dataset.acc);showToast('Theme updated');}));
   qsa('[data-jump]').forEach(b=>b.addEventListener('click',()=>navigate(b.dataset.jump)));
 }
@@ -1090,6 +1097,124 @@ function showHeatmapModal(){
   m.querySelector('#hm-x').onclick=()=>m.remove();
   m.addEventListener('click',e=>{if(e.target===m)m.remove();});
 }
+/* ---------- Sync & Backup Modal ---------- */
+function showSyncModal(){
+  function render(){
+    const st=getSyncStats();
+    const lastSyncStr = st.lastSync
+      ? st.lastSync.toLocaleDateString()+' '+st.lastSync.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})
+      : 'never';
+    m.innerHTML=`
+      <div class="modal-content" style="max-width:540px;max-height:88vh;overflow-y:auto;padding:24px;">
+        <button class="modal-close" id="sy-x">×</button>
+        <h2>🔄 Sync & Backup</h2>
+        <p style="color:var(--text-dim);margin-bottom:16px;line-height:1.6;">Move your <strong>entire progress</strong> between devices — XP, scores, wrong answers, wins, sealed letter, checklist, tasbih count, theme. Everything. No accounts, no servers: your data is just a code.</p>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center;">
+            <div style="font-family:'Space Grotesk';font-size:1.4rem;font-weight:700;background:linear-gradient(135deg,var(--purple),var(--pink));-webkit-background-clip:text;background-clip:text;color:transparent;">${st.keys}/${st.totalKeys}</div>
+            <div style="font-size:0.78rem;color:var(--text-mute);text-transform:uppercase;letter-spacing:0.06em;margin-top:2px;">items saved</div>
+          </div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center;">
+            <div style="font-family:'Space Grotesk';font-size:1.4rem;font-weight:700;background:linear-gradient(135deg,var(--purple),var(--pink));-webkit-background-clip:text;background-clip:text;color:transparent;">${st.approxKB} KB</div>
+            <div style="font-size:0.78rem;color:var(--text-mute);text-transform:uppercase;letter-spacing:0.06em;margin-top:2px;">last sync: ${st.lastSync?st.lastSync.toLocaleDateString(undefined,{month:'short',day:'numeric'}):'—'}</div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;">
+            <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px;">
+              <span style="font-size:1.4rem;">📤</span>
+              <strong>From this device</strong>
+            </div>
+            <p style="font-size:0.85rem;color:var(--text-dim);margin:0 0 10px;">Generate a code containing your full progress. Copy it or download as a backup file, then take it to your other device.</p>
+            <div class="row" style="gap:8px;flex-wrap:wrap;">
+              <button class="btn btn-primary" id="sy-export">📋 Copy sync code</button>
+              <button class="btn" id="sy-download">💾 Download backup file</button>
+            </div>
+          </div>
+
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;">
+            <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px;">
+              <span style="font-size:1.4rem;">📥</span>
+              <strong>To this device</strong>
+            </div>
+            <p style="font-size:0.85rem;color:var(--text-dim);margin:0 0 10px;">Paste the code from your other device (or upload a backup file). <strong style="color:var(--pink);">This will overwrite current progress</strong> on this device.</p>
+            <textarea id="sy-input" placeholder="Paste sync code here..." rows="3" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;padding:12px;color:var(--text);font-family:monospace;font-size:0.78rem;resize:vertical;min-height:70px;"></textarea>
+            <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px;">
+              <button class="btn btn-primary" id="sy-import">Import code →</button>
+              <button class="btn" id="sy-upload">📁 Upload .mcat file</button>
+            </div>
+            <input type="file" id="sy-file" accept=".mcat,.txt" style="display:none;">
+          </div>
+        </div>
+
+        <p style="font-size:0.78rem;color:var(--text-mute);text-align:center;margin-top:14px;line-height:1.5;">Tip: text/WhatsApp/email the code to yourself. Keep a backup file somewhere safe in case you clear browser data.</p>
+      </div>`;
+    document.body.appendChild(m);
+    const close=()=>m.remove();
+    m.querySelector('#sy-x').onclick=close;
+    m.addEventListener('click',e=>{if(e.target===m)close();});
+
+    m.querySelector('#sy-export').onclick=async()=>{
+      const code = exportSyncCode();
+      let copied=false;
+      try{ await navigator.clipboard.writeText(code); copied=true; }catch(e){
+        // fallback
+        const ta=document.createElement('textarea');ta.value=code;ta.style.position='fixed';ta.style.opacity='0';
+        document.body.appendChild(ta);ta.select();try{document.execCommand('copy');copied=true;}catch(_){}document.body.removeChild(ta);
+      }
+      localStorage.setItem('mcat-last-sync',Date.now().toString());
+      if(copied) showToast('✓ Sync code copied','Paste on your other device');
+      else showToast(code,'Copy this code manually');
+      render();
+    };
+
+    m.querySelector('#sy-download').onclick=()=>{
+      const code = exportSyncCode();
+      const blob = new Blob([code],{type:'text/plain;charset=utf-8'});
+      const a=document.createElement('a');
+      const d=new Date();
+      a.href=URL.createObjectURL(blob);
+      a.download=`mcat-backup-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}.mcat`;
+      document.body.appendChild(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+      localStorage.setItem('mcat-last-sync',Date.now().toString());
+      showToast('✓ Backup downloaded','Keep the .mcat file safe');
+      render();
+    };
+
+    m.querySelector('#sy-import').onclick=()=>{
+      const code = m.querySelector('#sy-input').value.trim();
+      if(!code){showToast('Paste a sync code first');return;}
+      if(!confirm('Importing will replace this device\'s progress. Continue?')) return;
+      const res = importSyncCode(code);
+      if(!res.ok){ showToast('❌ Invalid code','Check you copied it completely'); return; }
+      localStorage.setItem('mcat-last-sync',Date.now().toString());
+      showToast(`✓ Progress synced (${res.count} items)`);
+      setTimeout(()=>{close();location.reload();},1200);
+    };
+
+    m.querySelector('#sy-upload').onclick=()=>m.querySelector('#sy-file').click();
+    m.querySelector('#sy-file').onchange=(e)=>{
+      const f=e.target.files[0]; if(!f)return;
+      const r=new FileReader();
+      r.onload=()=>{
+        if(!confirm('Importing from file will replace this device\'s progress. Continue?')) return;
+        const res=importSyncCode(r.result);
+        if(!res.ok){showToast('❌ Couldn\'t read that file');return;}
+        localStorage.setItem('mcat-last-sync',Date.now().toString());
+        showToast(`✓ Backup restored (${res.count} items)`);
+        setTimeout(()=>{close();location.reload();},1200);
+      };
+      r.readAsText(f);
+    };
+  }
+  const m=document.createElement('div');m.className='modal-overlay';m.style.cssText='position:fixed;inset:0;z-index:500;background:rgba(11,7,32,0.75);backdrop-filter:blur(8px);display:grid;place-items:center;padding:16px;';
+  render();
+}
+
+
 
 
 /* ===========================================================

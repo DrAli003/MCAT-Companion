@@ -65,7 +65,7 @@ body{
 /* ---------- Navbar ---------- */
 .navbar{
   display: flex; align-items: center; justify-content: space-between;
-  padding: 18px 36px;
+  padding: max(18px, env(safe-area-inset-top)) 36px 18px;
   position: sticky; top:0; z-index:50;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);

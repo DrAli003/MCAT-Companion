@@ -545,3 +545,58 @@ function nextPrayer(){
   }
   return {p:{...prayers[0],name:'Fajr (tomorrow)'}, minsLeft:(24*60-nowMin)+prayers[0].h*60+prayers[0].m};
 }
+
+/* ============================================================
+   SYNC & BACKUP
+   ============================================================ */
+// All keys that hold user-progress data. Device-specific flags (like mcat-pwa-installed, mcat-whatsnew) are excluded.
+const SYNC_KEYS = [
+  'mcat-stats','mcat-fl-scores','mcat-test-date','mcat-schedule','mcat-tasks',
+  'mcat-wrong','mcat-self-letter','mcat-wins','mcat-tasbih','mcat-checklist',
+  'mcat-pomo-history','mcat-accent','mcat-theme','mcat-sound','mcat-welcomed','mcat-letter-opened'
+];
+const SYNC_VERSION = 1;
+
+function exportSyncCode(){
+  const data = {};
+  SYNC_KEYS.forEach(k => { const v = localStorage.getItem(k); if(v!==null) data[k]=v; });
+  const payload = { v: SYNC_VERSION, t: Date.now(), d: data };
+  // UTF-8 safe base64 URL-encoding
+  const json = JSON.stringify(payload);
+  const bytes = new TextEncoder().encode(json);
+  let bin = '';
+  bytes.forEach(b => bin += String.fromCharCode(b));
+  return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function importSyncCode(code){
+  try{
+    const b64 = code.replace(/-/g,'+').replace(/_/g,'/');
+    const pad = b64.length % 4 ? '='.repeat(4 - (b64.length%4)) : '';
+    const bin = atob(b64+pad);
+    const bytes = new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+    const json = new TextDecoder().decode(bytes);
+    const payload = JSON.parse(json);
+    if(!payload || !payload.d) throw new Error('Invalid code');
+    // Merge strategy: overwrite each key in payload (user confirmed on import)
+    let count=0;
+    Object.keys(payload.d).forEach(k=>{
+      if(SYNC_KEYS.includes(k)){ localStorage.setItem(k,payload.d[k]); count++; }
+    });
+    return { ok:true, count, time: payload.t };
+  }catch(e){
+    return { ok:false, error: e.message };
+  }
+}
+function getSyncStats(){
+  const sizes = SYNC_KEYS.map(k => (localStorage.getItem(k)||'').length);
+  const total = sizes.reduce((a,b)=>a+b,0);
+  const lastSync = parseInt(localStorage.getItem('mcat-last-sync')||'0',10);
+  return {
+    keys: SYNC_KEYS.filter(k=>localStorage.getItem(k)!==null).length,
+    totalKeys: SYNC_KEYS.length,
+    totalChars: total,
+    approxKB: (total/1024).toFixed(1),
+    lastSync: lastSync ? new Date(lastSync) : null,
+  };
+}
