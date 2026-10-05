@@ -106,6 +106,26 @@ const ACHIEVEMENTS = [
   {id:'all-mnemonics',title:'Mnemonic Browser',desc:'View all mnemonic categories',icon:'💡',check:s=>s.mnemonicsViewed,xp:50},
   {id:'dedication-viewed',title:'The Note',desc:'Read the dedication letter',icon:'✉️',check:s=>s.dedicationRead,xp:50},
   {id:'testday-unlocked',title:'Test Day',desc:'Open the sealed letter on test day',icon:'🔓',check:s=>s.testDayOpened,xp:200},
+  {id:'wrong-logged',title:'Error Logger',desc:'Save your first wrong answer',icon:'📓',check:s=>(loadWrongAnswers().length)>=1,xp:25},
+  {id:'wrong-25',title:'Mistake Master',desc:'Log 25 wrong answers',icon:'📖',check:s=>loadWrongAnswers().length>=25,xp:100},
+  {id:'self-letter',title:'Letter to Self',desc:'Write a note to your future self',icon:'✍️',check:s=>loadSelfLetter().written,xp:40},
+  {id:'tasbih-100',title:'Remembrance',desc:'Complete a round of dhikr',icon:'📿',check:s=>s.tasbihCompleted,xp:30},
+  {id:'wins-7',title:'Daily Wins',desc:'Log a win 7 days in a row',icon:'💫',check:s=>{
+    const wins=loadWins();
+    let streak=0; const d=new Date();
+    for(let i=0;i<30;i++){
+      const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      if(wins[k])streak++; else break;
+      d.setDate(d.getDate()-1);
+    }
+    return streak>=7;
+  },xp:80},
+  {id:'checklist-complete',title:'Game Day Ready',desc:'Check off every test-day item',icon:'✅',check:s=>{
+    const done=loadChecklist(); let total=0,checked=0;
+    CHECKLIST_SECTIONS.forEach(sec=>sec.items.forEach(it=>{total++; if(done[it])checked++;}));
+    return total>0 && checked===total;
+  },xp:100},
+  {id:'breathe',title:'Breathe',desc:'Complete a box-breathing session',icon:'🌬️',check:s=>s.breathed,xp:20},
 ];
 
 let _checkingAch = false;
@@ -304,3 +324,193 @@ function unlockLetter(){
   const s=loadStats(); s.testDayOpened=true; saveStats(s); checkAchievements();
 }
 
+
+/* ============================================================
+   NEW FEATURES LAYER (v5)
+   ============================================================ */
+
+// ---------- WRONG ANSWER NOTEBOOK ----------
+function loadWrongAnswers(){
+  return JSON.parse(localStorage.getItem('mcat-wrong')||'[]');
+}
+function saveWrongAnswer(entry){
+  // entry: {q, correctA, userA, cat, explain, date}
+  const arr = loadWrongAnswers();
+  arr.unshift({...entry, id:Date.now(), reviewed:false});
+  localStorage.setItem('mcat-wrong',JSON.stringify(arr));
+}
+function markWrongReviewed(id, reviewed){
+  const arr = loadWrongAnswers();
+  const idx = arr.findIndex(x=>x.id===id);
+  if(idx>=0){arr[idx].reviewed=reviewed; localStorage.setItem('mcat-wrong',JSON.stringify(arr));}
+}
+function deleteWrong(id){
+  const arr = loadWrongAnswers().filter(x=>x.id!==id);
+  localStorage.setItem('mcat-wrong',JSON.stringify(arr));
+}
+
+// ---------- FUTURE-SELF LETTER ----------
+function loadSelfLetter(){
+  return JSON.parse(localStorage.getItem('mcat-self-letter')||'{"written":false,"text":"","date":null}');
+}
+function saveSelfLetter(text){
+  localStorage.setItem('mcat-self-letter', JSON.stringify({written:true,text,date:new Date().toISOString().slice(0,10)}));
+}
+function isSelfLetterUnlocked(){ return daysUntilTest()<=0 || isLetterUnlocked(); }
+
+// ---------- DAILY WINS ----------
+function todayKey(){
+  const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function loadWins(){
+  return JSON.parse(localStorage.getItem('mcat-wins')||'{}');
+}
+function getTodayWin(){ return loadWins()[todayKey()]||''; }
+function saveTodayWin(text){
+  const w=loadWins();
+  if(text.trim()) w[todayKey()]=text.trim(); else delete w[todayKey()];
+  localStorage.setItem('mcat-wins',JSON.stringify(w));
+}
+
+// ---------- TASBIH ----------
+function loadTasbih(){
+  return JSON.parse(localStorage.getItem('mcat-tasbih')||'{\"count\":0,\"total\":0,\"target\":33,\"current\":\"subhanAllah\"}');
+}
+function saveTasbih(t){ localStorage.setItem('mcat-tasbih',JSON.stringify(t)); }
+const TASBIH_PRESETS = [
+  {id:'subhanAllah', ar:'سُبْحَانَ ٱللَّٰه',  en:'SubhanAllah',              target:33, meaning:'Glory be to Allah'},
+  {id:'alhamdulillah',ar:'ٱلْحَمْدُ لِلَّٰه', en:'Alhamdulillah',            target:33, meaning:'All praise is due to Allah'},
+  {id:'allahuAkbar',  ar:'ٱللَّٰهُ أَكْبَر',   en:'Allahu Akbar',             target:34, meaning:'Allah is the Greatest'},
+  {id:'astaghfirullah',ar:'أَسْتَغْفِرُ ٱللَّٰه',en:'Astaghfirullah',         target:100,meaning:'I seek forgiveness from Allah'},
+  {id:'laIlaha',      ar:'لَا إِلَٰهَ إِلَّا ٱللَّٰه',en:'La ilaha illa Allah',target:100,meaning:'There is no god but Allah'},
+  {id:'salawat',      ar:'ٱللَّٰهُمَّ صَلِّ عَلَىٰ مُحَمَّدٍ',en:'Salawat (Allahumma salli \'ala Muhammad)',target:100,meaning:'O Allah, send blessings upon Muhammad ﷺ'},
+  {id:'custom',       ar:'',                     en:'Custom dhikr',             target:33, meaning:'Enter your own'},
+];
+
+// ---------- TEST-DAY CHECKLIST ----------
+const CHECKLIST_SECTIONS = [
+  {title:'The Night Before', items:[
+    'Print MCAT admission confirmation',
+    'Set TWO alarms (one across the room)',
+    'Pack 2 forms of valid ID (government photo + student)',
+    'Pack snacks (nuts, fruit, chocolate — nothing messy)',
+    'Pack water bottle (clear, label-free)',
+    'Pack lunch (familiar foods — no surprises)',
+    'Layers (testing center AC is unpredictable)',
+    'Earplugs (soft foam — check center policy)',
+    'Tissues, pain reliever, inhaler if needed',
+    'Phone fully charged (silenced, left in locker)',
+    'Do NOT study new material — light review only',
+    'Sleep 7–8 hours, no screens 1 hour before bed',
+    'Make du\'a in sujood before sleeping',
+  ]},
+  {title:'The Morning Of', items:[
+    'Wake up early — no rushing',
+    'Make wudu and pray Fajr with presence',
+    'Eat a normal breakfast (oats/eggs/bread — same as practice days)',
+    'Recite رَبِّ اشْرَحْ لِي صَدْرِي وَيَسِّرْ لِي أَمْرِي',
+    'Drink water, coffee if you normally do',
+    'Leave early — arrive 30+ minutes before check-in',
+    'Avoid stressful conversations before entering',
+    'Two rak\'ah salah al-hajah if time permits',
+  ]},
+  {title:'During the Exam', items:[
+    'Bismillah before clicking "start"',
+    'Breathe — 4 in, 4 hold, 4 out between sections',
+    'Read every question carefully, flag hard ones and move on',
+    'Eat/drink during every break (you earned it)',
+    'Make du\'a in your heart during breaks',
+    'Don\'t discuss questions with other test-takers',
+    'One passage at a time — stay present',
+    'Wudhu refresh on long breaks if possible',
+  ]},
+];
+function loadChecklist(){
+  return JSON.parse(localStorage.getItem('mcat-checklist')||'{}');
+}
+function saveChecklist(c){ localStorage.setItem('mcat-checklist',JSON.stringify(c)); }
+
+// ---------- BREATHING EXERCISE ----------
+// The 4-4-4-4 box breathing pattern; uses setInterval in app.js
+
+// ---------- ACCENT/THEME COLOR ----------
+const ACCENTS = [
+  {id:'purple', name:'Purple',   grad:'linear-gradient(135deg,#a78bfa,#ec4899)', c1:'#a78bfa', c2:'#ec4899'},
+  {id:'green',  name:'Emerald',  grad:'linear-gradient(135deg,#34d399,#22d3ee)', c1:'#34d399', c2:'#22d3ee'},
+  {id:'blue',   name:'Ocean',    grad:'linear-gradient(135deg,#60a5fa,#818cf8)', c1:'#60a5fa', c2:'#818cf8'},
+  {id:'gold',   name:'Desert',   grad:'linear-gradient(135deg,#fbbf24,#fb923c)', c1:'#fbbf24', c2:'#fb923c'},
+  {id:'rose',   name:'Rose',     grad:'linear-gradient(135deg,#f472b6,#f87171)', c1:'#f472b6', c2:'#f87171'},
+  {id:'neutral',name:'Classic',  grad:'linear-gradient(135deg,#a78bfa,#ec4899)', c1:'#a78bfa', c2:'#ec4899'},
+];
+function getAccent(){
+  const id = localStorage.getItem('mcat-accent')||'purple';
+  return ACCENTS.find(a=>a.id===id)||ACCENTS[0];
+}
+function setAccent(id){
+  localStorage.setItem('mcat-accent', id);
+  const a = getAccent();
+  document.documentElement.style.setProperty('--purple', a.c1);
+  document.documentElement.style.setProperty('--pink', a.c2);
+}
+
+// ---------- POMODORO HEATMAP DATA ----------
+function getPomoHistory(){
+  return JSON.parse(localStorage.getItem('mcat-pomo-history')||'{}');
+}
+function recordPomoDay(minutes){
+  const h = getPomoHistory();
+  const k = todayKey();
+  h[k] = (h[k]||0) + minutes;
+  localStorage.setItem('mcat-pomo-history', JSON.stringify(h));
+}
+
+// ---------- FL SCORE PROJECTOR ----------
+function projectScore(){
+  const s = loadStats();
+  const scores = (s.flScores||[]).filter(x=>x.score).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  if(scores.length<2) return null;
+  // Simple linear regression over index vs score
+  const n=scores.length;
+  let sx=0,sy=0,sxy=0,sxx=0;
+  scores.forEach((sc,i)=>{sx+=i;sy+=sc.score;sxy+=i*sc.score;sxx+=i*i;});
+  const slope=(n*sxy-sx*sy)/(n*sxx-sx*sx);
+  const intercept=(sy-slope*sx)/n;
+  const last = scores[scores.length-1].score;
+  const projected = Math.min(528, Math.max(472, Math.round(last + slope*2))); // project 2 FLs ahead
+  const delta = projected - last;
+  return {last, projected, delta, trend:slope>0.5?'up':slope<-0.5?'down':'plateau', n};
+}
+
+// ---------- PRAYER TIMES (Beirut, approximate) ----------
+// Very simple approximation — good enough for awareness during study, not for legal precision
+// User should verify with a proper app (Muslim Pro, etc.)
+function getPrayerTimes(){
+  const now = new Date();
+  const month = now.getMonth(); // 0=Jan
+  // Approximate times for Beirut (EET/EEST): fajr ~5am, dhuhr ~12:30pm, asr ~4pm, maghrib sunset, isha ~1.5h after maghrib
+  // DST: last Sunday March -> last Sunday Oct
+  const year = now.getFullYear();
+  const dstStart = new Date(year,2,31-((new Date(year,2,31).getDay()+0)%7)); // last sunday March
+  const dstEnd = new Date(year,9,31-((new Date(year,9,31).getDay()+0)%7));    // last sunday Oct
+  const dst = now>=dstStart && now<dstEnd;
+  const tz = dst?3:2;
+  const maghribHour = month<2?17 : month<4?18 : month<7?19 : month<9?19 : month<10?18:17;
+  const maghribMin = month<2?30:15;
+  return [
+    {name:'Fajr',     h:4+(month>2&&month<10?1:0), m:35, ar:'الفجر'},
+    {name:'Dhuhr',    h:12+(dst?1:0), m:30, ar:'الظهر'},
+    {name:'Asr',      h:15+(dst?1:0)+(month>3&&month<9?1:0), m:45, ar:'العصر'},
+    {name:'Maghrib',  h:maghribHour+(dst?1:0), m:maghribMin, ar:'المغرب'},
+    {name:'Isha',     h:maghribHour+(dst?1:0)+1, m:45, ar:'العشاء'},
+  ];
+}
+function nextPrayer(){
+  const prayers = getPrayerTimes();
+  const now = new Date();
+  const nowMin = now.getHours()*60+now.getMinutes();
+  for(const p of prayers){
+    const pm = p.h*60+p.m;
+    if(pm>nowMin) return {p, minsLeft:pm-nowMin};
+  }
+  return {p:{...prayers[0],name:'Fajr (tomorrow)'}, minsLeft:(24*60-nowMin)+prayers[0].h*60+prayers[0].m};
+}

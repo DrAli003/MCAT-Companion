@@ -161,6 +161,9 @@ function render(){
     case 'journey': renderJourney(); break;
     case 'dedication': renderDedication(); break;
     case 'testday': renderTestDay(); break;
+    case 'tasbih': renderTasbih(); break;
+    case 'wrong': renderWrong(); break;
+    case 'tools': renderTools(); break;
     case 'achievements': renderAchievements(); break;
     case 'timer': openPomodoro(); break;
   }
@@ -637,6 +640,458 @@ function renderDedication(){
 }
 
 
+/* ============================================================
+   WRONG ANSWER NOTEBOOK
+   ============================================================ */
+function renderWrong(){
+  let wrong = loadWrongAnswers();
+  const cats = ['All', ...new Set(wrong.map(w=>w.cat).filter(Boolean))];
+  const filter = state.wrongFilter||'All';
+  const showReviewed = !!state.wrongShowReviewed;
+  let filtered = filter==='All'?wrong : wrong.filter(w=>w.cat===filter);
+  if(!showReviewed) filtered = filtered.filter(w=>!w.reviewed);
+  app.innerHTML = `
+    <section class="section active">
+      <div class="section-header">
+        <h1>📓 Wrong Answer Notebook</h1>
+        <p class="section-subtitle">Every wrong question logged is a point you won't miss on test day inshaAllah. Review these until you can teach them back.</p>
+      </div>
+      <div class="card-flat mb-16">
+        <div class="row" style="gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+          <select id="wrong-cat" style="flex:1; min-width:140px;">
+            ${cats.map(c=>`<option value="${c}" ${c===filter?'selected':''}>${c}</option>`).join('')}
+          </select>
+          <label style="display:inline-flex;align-items:center;gap:8px;font-size:0.88rem;cursor:pointer;">
+            <input type="checkbox" id="wrong-show-rev" ${showReviewed?'checked':''}/> Show reviewed
+          </label>
+          <button class="btn" id="wrong-clear" style="font-size:0.82rem;">Clear reviewed</button>
+        </div>
+        <div style="font-size:0.9rem;color:var(--text-mute);margin-bottom:10px;">
+          ${wrong.length} total logged · ${wrong.filter(w=>!w.reviewed).length} to review
+        </div>
+        ${filtered.length===0 ? `
+          <div style="text-align:center;padding:40px 20px;color:var(--text-mute);">
+            <div style="font-size:3rem;margin-bottom:10px;">📖</div>
+            <p>${wrong.length===0?'Your wrong-answer book is empty. Miss a quiz question and it will show up here for review.':'Nothing to review in this filter. MashaAllah!'}
+          </div>
+        ` : filtered.map(w=>`
+          <div class="wrong-item ${w.reviewed?'reviewed':''}" data-id="${w.id}">
+            <div class="wrong-meta">
+              <span class="wrong-cat">${w.cat||'General'}</span>
+              <span class="wrong-date">${w.date?new Date(w.date).toLocaleDateString():''}</span>
+            </div>
+            <div class="wrong-q">${w.q}</div>
+            <div class="wrong-choices">
+              <div class="wc wc-wrong"><span class="wc-label">You picked:</span> ${w.userChoice||'(unanswered)'}</div>
+              <div class="wc wc-right"><span class="wc-label">Correct:</span> ${w.correctAnswer}</div>
+            </div>
+            <div class="wrong-explain">${w.explain||''}</div>
+            <div class="row" style="gap:8px;margin-top:10px;">
+              <button class="btn btn-sm wrong-mark" data-id="${w.id}">${w.reviewed?'↩ Mark for review':'✓ I understand this now'}</button>
+              <button class="btn btn-sm wrong-del" data-id="${w.id}">🗑</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </section>
+  `;
+  qs('#wrong-cat').addEventListener('change',e=>{state.wrongFilter=e.target.value;renderWrong();});
+  qs('#wrong-show-rev').addEventListener('change',e=>{state.wrongShowReviewed=e.target.checked;renderWrong();});
+  qs('#wrong-clear').addEventListener('click',()=>{
+    if(confirm('Remove all reviewed entries?')){
+      const kept = loadWrongAnswers().filter(w=>!w.reviewed);
+      localStorage.setItem('mcat-wrong',JSON.stringify(kept));
+      showToast('Reviewed entries cleared'); renderWrong();
+    }
+  });
+  qsa('.wrong-mark').forEach(b=>b.addEventListener('click',()=>{
+    const id=+b.dataset.id;
+    const arr=loadWrongAnswers();
+    const entry=arr.find(x=>x.id===id);
+    if(entry){markWrongReviewed(id,!entry.reviewed); showToast(entry.reviewed?'Marked for review':'✓ Marked as reviewed'); renderWrong();}
+  }));
+  qsa('.wrong-del').forEach(b=>b.addEventListener('click',()=>{
+    if(confirm('Delete this entry?')){deleteWrong(+b.dataset.id);renderWrong();}
+  }));
+}
+
+/* ============================================================
+   TASBIH / DHIKR COUNTER
+   ============================================================ */
+let tasbihInterval=null;
+function renderTasbih(){
+  const t = loadTasbih();
+  const preset = TASBIH_PRESETS.find(p=>p.id===t.current)||TASBIH_PRESETS[0];
+  const target = t.target||preset.target;
+  const pct = Math.min(1,t.count/target);
+  app.innerHTML = `
+    <section class="section active">
+      <div class="section-header" style="text-align:center;">
+        <h1>📿 Tasbih</h1>
+        <p class="section-subtitle" style="margin:0 auto;">Remember Allah in your study breaks. A few moments of dhikr calm the heart and bring barakah.</p>
+      </div>
+      <div class="tasbih-card">
+        <div class="tasbih-ar" dir="rtl">${preset.ar}</div>
+        <div class="tasbih-en">${preset.en}</div>
+        <div class="tasbih-meaning">${preset.meaning}</div>
+        <select id="tasbih-preset" style="margin:14px auto; display:block; max-width:260px;">
+          ${TASBIH_PRESETS.map(p=>`<option value="${p.id}" ${p.id===t.current?'selected':''}>${p.en} (${p.target})</option>`).join('')}
+        </select>
+        <button class="tasbih-count-btn" id="tasbih-tap">
+          <div class="tasbih-num">${t.count}</div>
+          <div class="tasbih-target">/ ${target}</div>
+        </button>
+        <div class="tasbih-bar"><div class="tasbih-fill" style="width:${pct*100}%"></div></div>
+        <div class="row" style="gap:10px; justify-content:center; margin-top:18px;">
+          <button class="btn" id="tasbih-reset">↺ Reset</button>
+          <button class="btn btn-primary" id="tasbih-vibrate">${navigator.vibrate?'🔳 Toggle Vibration':'📳 Vibration not supported'}</button>
+        </div>
+        <div style="text-align:center; margin-top:18px; font-size:0.85rem; color:var(--text-mute);">
+          Lifetime total: ${t.total||0} · Tap the button or press spacebar
+        </div>
+      </div>
+    </section>
+  `;
+  function updateTasbih(){
+    const btn=qs('#tasbih-tap'); const num=btn.querySelector('.tasbih-num'); const tgt=btn.querySelector('.tasbih-target');
+    const fill=qs('.tasbih-fill');
+    const cur=loadTasbih();
+    const pr=TASBIH_PRESETS.find(p=>p.id===cur.current)||TASBIH_PRESETS[0];
+    const t=cur.target||pr.target;
+    num.textContent=cur.count; tgt.textContent='/ '+t;
+    fill.style.width=Math.min(100,(cur.count/t)*100)+'%';
+  }
+  function tap(){
+    const cur=loadTasbih();
+    cur.count++; cur.total=(cur.total||0)+1;
+    if(cur.count>=(cur.target||preset.target)){
+      saveStats(Object.assign(loadStats(),{tasbihCompleted:true}));
+      checkAchievements();
+      showToast('✅ MashaAllah! Round complete +30 XP','May Allah accept your worship');
+      launchConfetti();
+      awardXP(30,'Tasbih round completed');
+      cur.count=0;
+    }
+    saveTasbih(cur);
+    if(navigator.vibrate && !cur.noVibrate) navigator.vibrate(20);
+    updateTasbih();
+  }
+  qs('#tasbih-tap').addEventListener('click',tap);
+  qs('#tasbih-reset').addEventListener('click',()=>{
+    const cur=loadTasbih(); cur.count=0; saveTasbih(cur); updateTasbih();
+  });
+  qs('#tasbih-preset').addEventListener('change',e=>{
+    const pr=TASBIH_PRESETS.find(p=>p.id===e.target.value);
+    const cur=loadTasbih(); cur.current=pr.id; cur.target=pr.target; cur.count=0; saveTasbih(cur);
+    renderTasbih();
+  });
+  const vbtn=qs('#tasbih-vibrate');
+  if(navigator.vibrate){
+    vbtn.addEventListener('click',()=>{
+      const cur=loadTasbih(); cur.noVibrate=!cur.noVibrate; saveTasbih(cur);
+      vbtn.textContent = cur.noVibrate?'🔳 Vibration off':'🔳 Vibration on';
+    });
+  }
+  // Spacebar support
+  tasbihInterval && document.removeEventListener('keydown',window._tasbihKey);
+  window._tasbihKey = (ev)=>{if(ev.code==='Space' && state.view==='tasbih' && !ev.repeat){ev.preventDefault();tap();}};
+  document.addEventListener('keydown',window._tasbihKey);
+}
+
+/* ============================================================
+   TOOLS PAGE — hub for all the smaller features
+   ============================================================ */
+function renderTools(){
+  const accent=getAccent();
+  app.innerHTML = `
+    <section class="section active">
+      <div class="section-header">
+        <h1>🧰 Tools & Reminders</h1>
+        <p class="section-subtitle">Small things that help — checklist, breathing, future-self letter, daily win, heatmap, theme.</p>
+      </div>
+
+      <div class="grid grid-2 mb-16">
+        <div class="card tool-card" id="tool-checklist">
+          <div class="tool-icon">✅</div>
+          <h3>Test-Day Checklist</h3>
+          <p>Everything you need to pack, do, and remember the night before and morning of.</p>
+          <button class="btn btn-primary">Open →</button>
+        </div>
+        <div class="card tool-card" id="tool-breathe">
+          <div class="tool-icon">🌬️</div>
+          <h3>Take a Breath</h3>
+          <p>60-second box breathing (4-4-4-4) to calm anxiety between UWorld blocks.</p>
+          <button class="btn btn-primary">Breathe →</button>
+        </div>
+        <div class="card tool-card" id="tool-selfletter">
+          <div class="tool-icon">✍️</div>
+          <h3>Letter to Future Self</h3>
+          <p>Write a note sealed until test day. Read it alongside the one waiting for you.</p>
+          <button class="btn btn-primary">${loadSelfLetter().written?'Edit your letter':'Write letter →'}</button>
+        </div>
+        <div class="card tool-card" id="tool-win">
+          <div class="tool-icon">💫</div>
+          <h3>Today's Win</h3>
+          <p>Log one thing you're proud of today, no matter how small. Look back on test day.</p>
+          <button class="btn btn-primary">Log a win →</button>
+        </div>
+        <div class="card tool-card" id="tool-heatmap">
+          <div class="tool-icon">🟪</div>
+          <h3>Focus Heatmap</h3>
+          <p>See all your pomodoro days laid out — every purple square is a day you showed up.</p>
+          <button class="btn btn-primary">View heatmap →</button>
+        </div>
+        <div class="card tool-card" id="tool-accent">
+          <div class="tool-icon">🎨</div>
+          <h3>Accent Color</h3>
+          <p>Pick your favorite theme accent for the whole app.</p>
+          <div class="accent-row">${ACCENTS.map(a=>`<button class="accent-dot" data-acc="${a.id}" style="background:${a.grad}" title="${a.name}"></button>`).join('')}</div>
+        </div>
+        <div class="card tool-card">
+          <div class="tool-icon">🕌</div>
+          <h3>Next Prayer</h3>
+          <p>${(()=>{const n=nextPrayer();const h=Math.floor(n.minsLeft/60),m=n.minsLeft%60;return `<strong>${n.p.name}</strong>${n.p.ar?' · '+n.p.ar:''} in ~${h}h ${m}m — ${String(n.p.h).padStart(2,'0')}:${String(n.p.m).padStart(2,'0')}`;})()}</p>
+          <p style="font-size:0.78rem;color:var(--text-mute);margin-top:4px;">Approx. for Beirut — confirm with a proper prayer app.</p>
+        </div>
+        <div class="card tool-card">
+          <div class="tool-icon">📈</div>
+          <h3>Score Projection</h3>
+          <p>${(()=>{const p=projectScore();if(!p) return 'Log at least 2 full-length scores to see a trend.'; return `Last score: <strong>${p.last}</strong> · trending ${p.trend} · projected ~${p.projected} if you keep working like this.`;})()}</p>
+          <button class="btn" data-jump="scores">Go to scores →</button>
+        </div>
+      </div>
+    </section>
+  `;
+  qs('#tool-checklist').addEventListener('click',()=>showChecklistModal());
+  qs('#tool-breathe').addEventListener('click',()=>showBreathingModal());
+  qs('#tool-selfletter').addEventListener('click',()=>showSelfLetterModal());
+  qs('#tool-win').addEventListener('click',()=>showWinModal());
+  qs('#tool-heatmap').addEventListener('click',()=>showHeatmapModal());
+  qsa('.accent-dot').forEach(b=>b.addEventListener('click',()=>{setAccent(b.dataset.acc);showToast('Theme updated');}));
+  qsa('[data-jump]').forEach(b=>b.addEventListener('click',()=>navigate(b.dataset.jump)));
+}
+
+/* ---------- Checklist Modal ---------- */
+function showChecklistModal(){
+  const checked = loadChecklist();
+  let total=0,done=0;
+  CHECKLIST_SECTIONS.forEach(sec=>sec.items.forEach(it=>{total++; if(checked[it])done++;}));
+  const m=document.createElement('div');m.className='modal-overlay';m.style.cssText='position:fixed;inset:0;z-index:500;background:rgba(11,7,32,0.75);backdrop-filter:blur(8px);display:grid;place-items:center;padding:16px;';
+  m.innerHTML=`
+    <div class="modal-content" style="max-width:560px;max-height:85vh;overflow-y:auto;padding:24px;">
+      <button class="modal-close" id="cl-x">×</button>
+      <h2>✅ Game Day Ready</h2>
+      <p style="color:var(--text-dim);margin-bottom:8px;">Tick off everything as you prepare. The app remembers what you've done.</p>
+      <div style="margin-bottom:14px;">
+        <div style="height:8px;background:rgba(255,255,255,0.08);border-radius:999px;overflow:hidden;"><div style="height:100%;background:linear-gradient(90deg,var(--purple),var(--pink));width:${total?(done/total*100):0}%;transition:width 0.4s;"></div></div>
+        <div style="font-size:0.8rem;color:var(--text-mute);margin-top:4px;">${done}/${total} ready</div>
+      </div>
+      ${CHECKLIST_SECTIONS.map(sec=>`
+        <div style="margin-bottom:18px;">
+          <h3 style="margin-bottom:8px;font-size:1rem;">${sec.title}</h3>
+          ${sec.items.map(it=>`
+            <label style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;cursor:pointer;font-size:0.9rem;">
+              <input type="checkbox" data-it="${it}" ${checked[it]?'checked':''} style="margin-top:3px;width:18px;height:18px;accent-color:var(--purple);flex-shrink:0;"/>
+              <span style="color:var(--text-dim);${checked[it]?'text-decoration:line-through;opacity:0.6;':''}">${it}</span>
+            </label>
+          `).join('')}
+        </div>
+      `).join('')}
+      <div class="row" style="justify-content:flex-end;">
+        <button class="btn btn-primary" id="cl-done">Done</button>
+      </div>
+    </div>`;
+  document.body.appendChild(m);
+  const close=()=>m.remove();
+  m.querySelector('#cl-x').onclick=close;
+  m.querySelector('#cl-done').onclick=close;
+  m.addEventListener('click',e=>{if(e.target===m)close();});
+  m.querySelectorAll('input[type=checkbox]').forEach(cb=>cb.addEventListener('change',()=>{
+    const c=loadChecklist(); c[cb.dataset.it]=cb.checked; saveChecklist(c);
+    checkAchievements();
+    const nt=c.parentElement.nextElementSibling?c.parentElement.querySelector('span'):null;
+    if(nt){nt.style.textDecoration=cb.checked?'line-through':'none'; nt.style.opacity=cb.checked?'0.6':'1';}
+    // update progress bar
+    let t2=0,d2=0; CHECKLIST_SECTIONS.forEach(sec=>sec.items.forEach(it=>{t2++; const cc=loadChecklist(); if(cc[it])d2++;}));
+    const bar=m.querySelector('div > div > div'); if(bar)bar.style.width=(d2/t2*100)+'%';
+    const cnt=m.querySelector('div[style*="0.8rem"]'); if(cnt)cnt.textContent=d2+'/'+t2+' ready';
+  }));
+}
+
+/* ---------- Breathing Modal ---------- */
+function showBreathingModal(){
+  const s=loadStats(); s.breathed=true; saveStats(s); checkAchievements(); awardXP(20,'Breathing exercise completed');
+  const m=document.createElement('div');m.className='modal-overlay';m.style.cssText='position:fixed;inset:0;z-index:500;background:rgba(11,7,32,0.9);backdrop-filter:blur(16px);display:grid;place-items:center;padding:20px;';
+  m.innerHTML=`
+    <div style="text-align:center; color:white; max-width:420px;">
+      <div id="breath-circle" style="width:200px;height:200px;border-radius:50%;border:3px solid rgba(167,139,250,0.5);background:radial-gradient(circle,rgba(167,139,250,0.2),rgba(236,72,153,0.15));margin:0 auto 30px;display:grid;place-items:center;transition:transform 4s cubic-bezier(.4,0,.4,1), background 4s; transform:scale(0.5);">
+        <div id="breath-text" style="font-family:'Space Grotesk';font-size:1.4rem;font-weight:700;">Get ready…</div>
+      </div>
+      <p style="color:var(--text-dim);margin-bottom:20px;">Box breathing calms your nervous system in under a minute. Follow the circle.</p>
+      <div class="row" style="gap:8px;justify-content:center;">
+        <button class="btn" id="br-x">Close</button>
+      </div>
+    </div>`;
+  document.body.appendChild(m);
+  const close=()=>{clearInterval(iv);clearTimeout(st);m.remove();};
+  m.querySelector('#br-x').onclick=close;
+  const circle=m.querySelector('#breath-circle'), label=m.querySelector('#breath-text');
+  const phases=[
+    {t:'Breathe in',s:1.0, dur:4000},
+    {t:'Hold',      s:1.0, dur:4000},
+    {t:'Breathe out',s:0.5, dur:4000},
+    {t:'Hold',      s:0.5, dur:4000},
+  ];
+  let phase=0, cycles=0;
+  function step(){
+    const p=phases[phase];
+    label.textContent=p.t;
+    circle.style.transform='scale('+p.s+')';
+    phase=(phase+1)%4;
+    if(phase===0) cycles++;
+    if(cycles>=4){
+      setTimeout(()=>{label.textContent='Done 💜 May Allah grant you calm.'; circle.style.transform='scale(1)';},100);
+      return;
+    }
+    iv=setTimeout(step,p.dur);
+  }
+  let iv=setTimeout(step,1500);
+  setTimeout(()=>label.textContent='Breathe in…',500);
+}
+
+/* ---------- Future Self Letter Modal ---------- */
+function showSelfLetterModal(){
+  if(isSelfLetterUnlocked()){
+    // already unlocked — show it
+    const sl = loadSelfLetter();
+    const m=document.createElement('div');m.className='modal-overlay';m.style.cssText='position:fixed;inset:0;z-index:500;background:rgba(11,7,32,0.8);backdrop-filter:blur(12px);display:grid;place-items:center;padding:16px;';
+    m.innerHTML=`<div class="modal-content" style="max-width:540px;max-height:85vh;overflow-y:auto;padding:28px;">
+      <button class="modal-close" id="sl-x">×</button>
+      <h2>✍️ From past-you</h2>
+      <p style="color:var(--text-dim);font-size:0.85rem;">Written ${sl.date||'earlier this year'}</p>
+      <div style="margin-top:18px;white-space:pre-wrap;line-height:1.8;color:var(--text);font-style:italic;border-left:3px solid var(--purple);padding-left:16px;">${sl.text||'(empty)'}</div>
+    </div>`;
+    document.body.appendChild(m);
+    m.querySelector('#sl-x').onclick=()=>m.remove();
+    m.addEventListener('click',e=>{if(e.target===m)m.remove();});
+    return;
+  }
+  const sl=loadSelfLetter();
+  const days=daysUntilTest();
+  const m=document.createElement('div');m.className='modal-overlay';m.style.cssText='position:fixed;inset:0;z-index:500;background:rgba(11,7,32,0.8);backdrop-filter:blur(12px);display:grid;place-items:center;padding:16px;';
+  m.innerHTML=`<div class="modal-content" style="max-width:540px;max-height:85vh;overflow-y:auto;padding:24px;">
+    <button class="modal-close" id="sl-x">×</button>
+    <h2>✍️ Letter to Future You</h2>
+    <p style="color:var(--text-dim); margin-bottom:14px;">Write a note to yourself to open on test day inshaAllah — something your future self needs to hear.</p>
+    ${sl.written?`<div style="padding:10px 14px;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.3);border-radius:10px;font-size:0.85rem;color:var(--green);margin-bottom:10px;">✓ Sealed ${sl.date}. You can edit below.</div>`:''}
+    <textarea id="sl-text" rows="10" style="width:100%;padding:14px;border-radius:12px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:inherit;font-size:0.95rem;line-height:1.7;resize:vertical;" placeholder="On test day, when I'm sitting in that room, I want myself to remember...">${sl.text||''}</textarea>
+    <p style="font-size:0.8rem;color:var(--text-mute);margin-top:8px;">🔒 Seals automatically — unlocks in ~${days} days.</p>
+    <div class="row" style="gap:8px;justify-content:flex-end;margin-top:14px;">
+      <button class="btn" id="sl-cancel">Cancel</button>
+      <button class="btn btn-primary" id="sl-save">Seal this letter</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+  const close=()=>m.remove();
+  m.querySelector('#sl-x').onclick=close;
+  m.querySelector('#sl-cancel').onclick=close;
+  m.addEventListener('click',e=>{if(e.target===m)close();});
+  m.querySelector('#sl-save').onclick=()=>{
+    const t=m.querySelector('#sl-text').value.trim();
+    if(!t){alert('Write something first, even just a line.');return;}
+    saveSelfLetter(t); saveStats(Object.assign(loadStats(),{selfLetterWritten:true})); checkAchievements();
+    awardXP(40,'Letter to self sealed');
+    showToast('✍️ Sealed until test day inshaAllah','You\'ll see it when it matters most');
+    close();
+  };
+}
+
+/* ---------- Daily Win Modal ---------- */
+function showWinModal(){
+  const cur = getTodayWin();
+  const wins = loadWins();
+  const keys = Object.keys(wins).sort().reverse().slice(0,7);
+  const m=document.createElement('div');m.className='modal-overlay';m.style.cssText='position:fixed;inset:0;z-index:500;background:rgba(11,7,32,0.75);backdrop-filter:blur(8px);display:grid;place-items:center;padding:16px;';
+  m.innerHTML=`<div class="modal-content" style="max-width:500px;max-height:85vh;overflow-y:auto;padding:24px;">
+    <button class="modal-close" id="w-x">×</button>
+    <h2>💫 Today's Win</h2>
+    <p style="color:var(--text-dim);margin-bottom:14px;">Write one thing — big or small — that you're proud of today. Even showing up counts.</p>
+    <textarea id="w-text" rows="3" style="width:100%;padding:14px;border-radius:12px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:inherit;font-size:0.95rem;resize:vertical;" placeholder="Today I...">${cur}</textarea>
+    <div class="row" style="gap:8px;justify-content:flex-end;margin:14px 0;">
+      <button class="btn" id="w-cancel">Close</button>
+      <button class="btn btn-primary" id="w-save">Save</button>
+    </div>
+    ${keys.length?`<div style="border-top:1px solid var(--border);padding-top:14px;margin-top:6px;">
+      <h3 style="font-size:0.9rem;color:var(--text-mute);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.1em;">Last ${keys.length} days</h3>
+      ${keys.map(k=>`<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:0.88rem;"><strong style="color:var(--purple);">${k.slice(5)}</strong> — ${wins[k]}</div>`).join('')}
+    </div>`:''}
+  </div>`;
+  document.body.appendChild(m);
+  const close=()=>m.remove();
+  m.querySelector('#w-x').onclick=close; m.querySelector('#w-cancel').onclick=close;
+  m.addEventListener('click',e=>{if(e.target===m)close();});
+  m.querySelector('#w-save').onclick=()=>{
+    saveTodayWin(m.querySelector('#w-text').value);
+    checkAchievements();
+    showToast('Saved 💫','May Allah fill your days with small victories');
+    close();
+  };
+}
+
+/* ---------- Focus Heatmap ---------- */
+function showHeatmapModal(){
+  const history = getPomoHistory();
+  const weeks=52, days=7;
+  const now=new Date(); now.setHours(0,0,0,0);
+  // Start at the Sunday 52 weeks ago
+  const start = new Date(now); start.setDate(start.getDate()-weeks*7+((7-start.getDay())%7));
+  let cells='';
+  const vals=[];
+  for(let w=0;w<weeks;w++){
+    for(let d=0;d<days;d++){
+      const day=new Date(start); day.setDate(start.getDate()+w*7+d);
+      if(day>now){cells+='<div class="hm-cell" style="background:transparent;"></div>';continue;}
+      const k=day.getFullYear()+'-'+String(day.getMonth()+1).padStart(2,'0')+'-'+String(day.getDate()).padStart(2,'0');
+      const v=history[k]||0; vals.push(v);
+      let col='rgba(255,255,255,0.05)';
+      if(v>=10) col='rgba(167,139,250,0.25)';
+      if(v>=25) col='rgba(167,139,250,0.45)';
+      if(v>=50) col='rgba(167,139,250,0.65)';
+      if(v>=100)col='rgba(236,72,153,0.85)';
+      if(v>=150)col='rgba(236,72,153,1)';
+      const hr=Math.floor(v/60), mn=v%60;
+      const label = v?`${hr?hr+'h ':''}${mn}m on ${k}`:'No focus logged';
+      cells+=`<div class="hm-cell" style="background:${col};" title="${label}"></div>`;
+    }
+  }
+  const total = Object.values(history).reduce((a,b)=>a+b,0);
+  const daysWith = Object.values(history).filter(v=>v>0).length;
+  const m=document.createElement('div');m.className='modal-overlay';m.style.cssText='position:fixed;inset:0;z-index:500;background:rgba(11,7,32,0.85);backdrop-filter:blur(12px);display:grid;place-items:center;padding:16px;';
+  m.innerHTML=`<div class="modal-content" style="max-width:760px;width:100%;padding:24px;overflow-x:auto;">
+    <button class="modal-close" id="hm-x">×</button>
+    <h2>🟪 Focus Heatmap</h2>
+    <p style="color:var(--text-dim);margin-bottom:14px;">Every square is a day. Darker = more pomodoro minutes. Look how far you've already come.</p>
+    <div style="display:flex;gap:20px;margin-bottom:14px;flex-wrap:wrap;">
+      <div><div class="hm-stat">${Math.floor(total/60)}h ${total%60}m</div><div class="hm-stat-label">Total focus</div></div>
+      <div><div class="hm-stat">${daysWith}</div><div class="hm-stat-label">Days studied</div></div>
+      <div><div class="hm-stat">${Object.values(history).length?Math.round(total/daysWith):0}m</div><div class="hm-stat-label">Avg on study days</div></div>
+    </div>
+    <div class="hm-grid" style="display:grid;grid-template-columns:repeat(${weeks},1fr);grid-template-rows:repeat(${days},1fr);gap:3px;">${cells}</div>
+    <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end;margin-top:10px;font-size:0.75rem;color:var(--text-mute);">
+      Less <div class="hm-cell" style="width:12px;height:12px;background:rgba(255,255,255,0.05);"></div>
+      <div class="hm-cell" style="width:12px;height:12px;background:rgba(167,139,250,0.25);"></div>
+      <div class="hm-cell" style="width:12px;height:12px;background:rgba(167,139,250,0.45);"></div>
+      <div class="hm-cell" style="width:12px;height:12px;background:rgba(167,139,250,0.65);"></div>
+      <div class="hm-cell" style="width:12px;height:12px;background:rgba(236,72,153,0.85);"></div>
+      <div class="hm-cell" style="width:12px;height:12px;background:rgba(236,72,153,1);"></div> More
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+  m.querySelector('#hm-x').onclick=()=>m.remove();
+  m.addEventListener('click',e=>{if(e.target===m)m.remove();});
+}
+
+
 /* ===========================================================
    AMINO ACID EXPLORER
    =========================================================== */
@@ -1100,6 +1555,14 @@ function answerQuiz(i, q){
     awardXP(3, 'Correct answer');
   } else {
     playSound('wrong');
+    // Save to wrong-answer notebook
+    saveWrongAnswer({
+      q: q.q,
+      userChoice: q.choices[i],
+      correctAnswer: q.choices[q.answer],
+      cat: cat,
+      explain: q.explain,
+    });
   }
   const s = loadStats();
   s.quizQuestionsAnswered++;
@@ -1946,6 +2409,7 @@ function togglePom(){
           s.pomodorosCompleted++;
           s.totalFocusMinutes += 25;
           saveStats(s);
+          recordPomoDay(25);
           awardXP(15, 'Pomodoro complete');
           showToast('🎉 Focus session complete! +15 XP', 'Take a well-deserved break');
           launchConfetti();
@@ -2518,6 +2982,7 @@ function initApp(){
   });
   initNavToggle();
   initTheme();
+  setAccent(getAccent().id);
   initPomodoro();
   resetPom();
   // Toast dismiss
@@ -2526,10 +2991,62 @@ function initApp(){
   const tt = qs('#quote-toast');
   if(tt) tt.addEventListener('click', e=>{ if(e.target===tt) dismissToast(); });
   renderDashboard(); // start on dashboard
-  // Welcome toast
-  setTimeout(() => {
-    showToast('Welcome! Open the pomodoro timer (bottom right) to start studying. May Allah make it beneficial for you.', '— Built for your MCAT journey');
-  }, 800);
+  // What's New popup for this update (shows once)
+  setTimeout(showWhatsNew, 600);
+}
+
+function showWhatsNew(){
+  const key='mcat-whatsnew-v5';
+  if(localStorage.getItem(key)) return;
+  localStorage.setItem(key,'1');
+  const m=document.createElement('div');
+  m.className='whatsnew-overlay';
+  m.style.cssText='position:fixed;inset:0;z-index:600;background:rgba(11,7,32,0.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);display:grid;place-items:center;padding:20px;animation:fadeUp 0.5s ease;';
+  m.innerHTML=`
+    <div class="whatsnew-card" style="max-width:480px;width:100%;background:var(--surface);border:1px solid var(--border-strong);border-radius:20px;padding:30px 26px;position:relative;text-align:center;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch;">
+      <button class="modal-close" id="wn-x" style="position:absolute;top:14px;right:14px;">×</button>
+      <div style="font-size:3rem;margin-bottom:8px;">🆕</div>
+      <h2 style="margin-bottom:6px;background:linear-gradient(135deg,var(--purple),var(--pink));-webkit-background-clip:text;background-clip:text;color:transparent;">Updated for you</h2>
+      <p style="color:var(--text-dim);font-size:0.92rem;margin-bottom:18px;">Bismillah — a fresh batch of features to help you through these months, and the whole app now works properly on phones and tablets.</p>
+      <div style="text-align:left;display:flex;flex-direction:column;gap:12px;margin-bottom:20px;">
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <span style="font-size:1.3rem;flex-shrink:0;">📱</span>
+          <div><strong style="font-size:0.92rem;">Phone & tablet friendly</strong><div style="font-size:0.82rem;color:var(--text-mute);margin-top:2px;line-height:1.5;">Hamburger menu, proper spacing, bigger tap targets, no more cut-off toasts. Works smoothly on iPhones, iPads, and Android.</div></div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <span style="font-size:1.3rem;flex-shrink:0;">✍️</span>
+          <div><strong style="font-size:0.92rem;">Letter to your future self</strong><div style="font-size:0.82rem;color:var(--text-mute);margin-top:2px;line-height:1.5;">Write a note sealed until test day — open it alongside the one waiting for you, inshaAllah. Under Tools.</div></div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <span style="font-size:1.3rem;flex-shrink:0;">📓</span>
+          <div><strong style="font-size:0.92rem;">Wrong Answer Notebook</strong><div style="font-size:0.82rem;color:var(--text-mute);margin-top:2px;line-height:1.5;">Every quiz question you miss is auto-saved for review. Mark ones you've mastered. In the nav.</div></div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <span style="font-size:1.3rem;flex-shrink:0;">📿</span>
+          <div><strong style="font-size:0.92rem;">Tasbih counter</strong><div style="font-size:0.82rem;color:var(--text-mute);margin-top:2px;line-height:1.5;">SubhanAllah, Alhamdulillah, Allahu Akbar & more — with Arabic and vibration feedback for study breaks.</div></div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <span style="font-size:1.3rem;flex-shrink:0;">🌬️</span>
+          <div><strong style="font-size:0.92rem;">Take a Breath</strong><div style="font-size:0.82rem;color:var(--text-mute);margin-top:2px;line-height:1.5;">60-second box breathing exercise for anxiety before UWorld blocks. Under Tools.</div></div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <span style="font-size:1.3rem;flex-shrink:0;">✅</span>
+          <div><strong style="font-size:0.92rem;">Test-Day Checklist</strong><div style="font-size:0.82rem;color:var(--text-mute);margin-top:2px;line-height:1.5;">Packing, suhoor, du'a, sleep — everything to remember the night before and morning of.</div></div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <span style="font-size:1.3rem;flex-shrink:0;">💫</span>
+          <div><strong style="font-size:0.92rem;">Daily Wins · Heatmap · Themes · Prayer times</strong><div style="font-size:0.82rem;color:var(--text-mute);margin-top:2px;line-height:1.5;">Small ways to see your progress, stay grounded, and make it feel yours.</div></div>
+        </div>
+      </div>
+      <p style="font-size:0.85rem;color:var(--text-mute);font-style:italic;margin-bottom:16px;line-height:1.6;">May Allah make every hour of study count, keep your heart at peace, and bring you to that white coat inshaAllah.</p>
+      <button class="btn btn-primary" id="wn-ok" style="width:100%;justify-content:center;padding:14px;font-size:1rem;min-height:48px;">Bismillah, let's study →</button>
+    </div>
+  `;
+  document.body.appendChild(m);
+  const close=()=>{m.style.opacity='0';m.style.transition='opacity 0.3s'; setTimeout(()=>m.remove(),350);};
+  m.querySelector('#wn-x').onclick=close;
+  m.querySelector('#wn-ok').onclick=()=>{close(); launchConfetti();};
+  m.addEventListener('click',e=>{if(e.target===m)close();});
 }
 if(document.readyState === 'loading'){
   document.addEventListener('DOMContentLoaded', initApp);
