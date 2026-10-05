@@ -482,30 +482,61 @@ function projectScore(){
 }
 
 // ---------- PRAYER TIMES (Beirut, approximate) ----------
-// Very simple approximation — good enough for awareness during study, not for legal precision
-// User should verify with a proper app (Muslim Pro, etc.)
+// Beirut prayer times — astronomical formula calibrated to Dar al-Fatwa anchor (Oct 5 2026).
+// Approximate awareness tool; verify with a proper prayer app for legal precision.
+// Beirut: lat 33.89°N, lon 35.50°E. DST (EEST UTC+3): last Sun March 00:00 → last Sun Oct 00:00 → EET UTC+2.
 function getPrayerTimes(){
   const now = new Date();
-  const month = now.getMonth(); // 0=Jan
-  // Approximate times for Beirut (EET/EEST): fajr ~5am, dhuhr ~12:30pm, asr ~4pm, maghrib sunset, isha ~1.5h after maghrib
-  // DST: last Sunday March -> last Sunday Oct
-  const year = now.getFullYear();
-  const dstStart = new Date(year,2,31-((new Date(year,2,31).getDay()+0)%7)); // last sunday March
-  const dstEnd = new Date(year,9,31-((new Date(year,9,31).getDay()+0)%7));    // last sunday Oct
-  const dst = now>=dstStart && now<dstEnd;
-  const tz = dst?3:2;
-  const maghribHour = month<2?17 : month<4?18 : month<7?19 : month<9?19 : month<10?18:17;
-  const maghribMin = month<2?30:15;
+  const lat=33.8938, lng=35.5018;
+  function isDST(d){
+    const y=d.getFullYear();
+    function lastSun(m){const x=new Date(y,m+1,0); x.setDate(x.getDate()-x.getDay()); x.setHours(0,0,0,0); return x;}
+    return d>=lastSun(2) && d<lastSun(9);
+  }
+  const dst=isDST(now), tz=dst?3:2;
+  const start=new Date(now.getFullYear(),0,0);
+  const jd=Math.floor((now-start)/86400000);
+  const B=(360/365*(jd-81))*Math.PI/180;
+  const EoT=9.87*Math.sin(2*B)-7.53*Math.cos(B)-1.5*Math.sin(B); // minutes
+  const decl=23.45*Math.sin((360/365*(284+jd))*Math.PI/180);
+  const dhuhrMin=720+4*(15*tz-lng)-EoT;
+  const toR=d=>d*Math.PI/180, toD=r=>r*180/Math.PI;
+  function sinD(d){return Math.sin(toR(d));}
+  function cosD(d){return Math.cos(toR(d));}
+  function tanD(d){return Math.tan(toR(d));}
+  function acosD(x){return toD(Math.acos(Math.max(-1,Math.min(1,x))));}
+  function atan2D(y,x){return toD(Math.atan2(y,x));}
+  function timeForAlt(alt,rise){
+    const cosHA=(sinD(alt)-sinD(lat)*sinD(decl))/(cosD(lat)*cosD(decl));
+    const HA=acosD(cosHA)/15;
+    return rise? dhuhrMin-HA*60 : dhuhrMin+HA*60;
+  }
+  const sunrise=timeForAlt(-0.833,true);
+  const maghrib=timeForAlt(-0.833,false);
+  const asrAlt=atan2D(1,1+Math.tan(toR(Math.abs(lat-decl))));
+  const asr=timeForAlt(asrAlt,false);
+  const fajr=timeForAlt(-18.0,true);
+  const isha=timeForAlt(-16.3,false);
+  function toHM(mins,cal=0){
+    let t=mins+cal; t=((t%1440)+1440)%1440;
+    let h=Math.floor(t/60)%24, m=Math.round(t%60);
+    if(m===60){h=(h+1)%24;m=0;}
+    return {h,m};
+  }
+  const cal={fajr:-11, sunrise:-3, dhuhr:0, asr:3, maghrib:9, isha:10};
+  const F=toHM(fajr,cal.fajr), Su=toHM(sunrise,cal.sunrise), D=toHM(dhuhrMin,cal.dhuhr),
+        A=toHM(asr,cal.asr), M=toHM(maghrib,cal.maghrib), I=toHM(isha,cal.isha);
   return [
-    {name:'Fajr',     h:4+(month>2&&month<10?1:0), m:35, ar:'الفجر'},
-    {name:'Dhuhr',    h:12+(dst?1:0), m:30, ar:'الظهر'},
-    {name:'Asr',      h:15+(dst?1:0)+(month>3&&month<9?1:0), m:45, ar:'العصر'},
-    {name:'Maghrib',  h:maghribHour+(dst?1:0), m:maghribMin, ar:'المغرب'},
-    {name:'Isha',     h:maghribHour+(dst?1:0)+1, m:45, ar:'العشاء'},
+    {name:'Fajr',    h:F.h, m:F.m, ar:'الفجر'},
+    {name:'Sunrise',h:Su.h,m:Su.m,ar:'الشروق',isSunrise:true},
+    {name:'Dhuhr',   h:D.h, m:D.m, ar:'الظهر'},
+    {name:'Asr',     h:A.h, m:A.m, ar:'العصر'},
+    {name:'Maghrib', h:M.h, m:M.m, ar:'المغرب'},
+    {name:'Isha',    h:I.h, m:I.m, ar:'العشاء'},
   ];
 }
 function nextPrayer(){
-  const prayers = getPrayerTimes();
+  const prayers = getPrayerTimes().filter(p=>!p.isSunrise);
   const now = new Date();
   const nowMin = now.getHours()*60+now.getMinutes();
   for(const p of prayers){

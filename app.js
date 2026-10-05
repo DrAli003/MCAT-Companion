@@ -2985,9 +2985,13 @@ function initApp(){
   setAccent(getAccent().id);
   initPomodoro();
   resetPom();
-  // Toast dismiss
+  // Toast dismiss (multiple events for iOS reliability)
   const tc = qs('#toast-close');
-  if(tc) tc.addEventListener('click', dismissToast);
+  const doDismiss=(e)=>{e.stopPropagation();e.preventDefault();dismissToast();};
+  if(tc){
+    tc.addEventListener('click',doDismiss);
+    tc.addEventListener('touchend',doDismiss,{passive:false});
+  }
   const tt = qs('#quote-toast');
   if(tt) tt.addEventListener('click', e=>{ if(e.target===tt) dismissToast(); });
   renderDashboard(); // start on dashboard

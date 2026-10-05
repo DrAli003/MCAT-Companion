@@ -597,31 +597,37 @@ label{font-size:0.85rem; font-weight:600; color:var(--text-dim); display:block; 
   background: linear-gradient(135deg, #1a1040, #2a1050);
   border:1px solid var(--border-strong);
   border-radius:16px;
-  padding:16px 48px 16px 20px;
+  padding:16px 56px 16px 20px;
   max-width:520px;
   width:calc(100% - 32px);
-  z-index:300;
-  box-shadow:0 10px 40px rgba(0,0,0,0.4);
+  z-index:350;
+  box-shadow:0 10px 40px rgba(0,0,0,0.5);
   transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
   color:#fff;
   box-sizing:border-box;
+  pointer-events:auto;
+  -webkit-transform:translateX(-50%) translateY(140%);
 }
-.quote-toast.show{transform:translateX(-50%) translateY(0);}
-.quote-toast p{font-style:italic; margin:0 0 4px; color:#fff; font-size:0.9rem; padding-right:8px; line-height:1.5;}
+.quote-toast.show{transform:translateX(-50%) translateY(0);-webkit-transform:translateX(-50%) translateY(0);}
+.quote-toast p{font-style:italic; margin:0; color:#fff; font-size:0.9rem; padding-right:8px; line-height:1.5;font-weight:500;}
 .quote-toast small{color:#c4b5fd; font-weight:600; font-size:0.78rem;}
 .toast-close{
-  position:absolute; top:10px; right:10px;
-  background:rgba(255,255,255,0.1); border:none; color:#fff;
-  width:32px; height:32px; border-radius:8px; font-size:1.3rem;
+  position:absolute; top:8px; right:8px;
+  background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.2);
+  color:#fff;
+  width:40px; height:40px; min-width:40px; min-height:40px;
+  border-radius:10px; font-size:1.6rem; font-weight:700;
   cursor:pointer; display:grid; place-items:center; line-height:1;
-  padding:0;
+  padding:0; z-index:360; touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+  font-family:system-ui,-apple-system,sans-serif;
 }
-.toast-close:hover{background:rgba(255,255,255,0.2); color:#fff;}
-body.light .quote-toast{background:#fff;border-color:rgba(30,20,70,0.15);box-shadow:0 10px 30px rgba(30,20,70,0.15);}
-body.light .quote-toast p{color:#1a0f3c;}
-body.light .quote-toast small{color:var(--purple);}
-body.light .toast-close{background:rgba(30,20,70,0.08);color:var(--text);}
-body.light .toast-close:hover{background:rgba(30,20,70,0.15);}
+.toast-close:active{background:rgba(255,255,255,0.35);transform:scale(0.92);}
+body.light .quote-toast{background:linear-gradient(135deg,#6d28d9,#db2777);border-color:rgba(255,255,255,0.2);box-shadow:0 10px 30px rgba(109,40,217,0.3);}
+body.light .quote-toast p{color:#fff;}
+body.light .quote-toast small{color:#fbcfe8;}
+body.light .toast-close{background:rgba(255,255,255,0.2);border-color:rgba(255,255,255,0.3);color:#fff;}
+body.light .toast-close:active{background:rgba(255,255,255,0.4);}
 
 /* badges */
 .badge{
