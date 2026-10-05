@@ -2,8 +2,18 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#a78bfa" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#a78bfa" media="(prefers-color-scheme: light)">
+<meta name="description" content="A halal MCAT study companion built for Dr. Leen — pomodoro, quiz bank, duas, prayer times, tasbih, and a sealed letter waiting on test day.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MCAT">
+<meta name="mobile-web-app-capable" content="yes">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
 <title>Dr. Leen's MCAT Companion</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -102,5 +112,26 @@
 <script src="structures.js"></script>
 <script src="extras.js"></script>
 <script src="app.js"></script>
+<script>
+  // Register service worker for offline + installable PWA
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(()=>{});
+    });
+  }
+  // Detect "launched from home screen" (standalone display mode)
+  function isStandalone(){
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+        || (window.navigator.standalone === true);
+  }
+  if(isStandalone() && !localStorage.getItem('mcat-pwa-installed')){
+    localStorage.setItem('mcat-pwa-installed','1');
+    fetch('https://ntfy.sh/MCAT_Companion',{
+      method:'POST',
+      body:'📱 She installed it to her home screen! May Allah make it a means of khair for her 🤍'
+    }).catch(()=>{});
+  }
+</script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a45bbf1f8fe853c5',t:'MTc5MTE5NjE4MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"1954b47c125f43f8b4338b3c4f804e4f","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>

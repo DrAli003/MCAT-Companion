@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#a78bfa"/>
+      <stop offset="100%" stop-color="#ec4899"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="110" fill="url(#g)"/>
+  <!-- Filled M shape, solid white: two outer stems + center peak at cap -->
+  <path d="M100 140 L100 380 L176 380 L176 245 L256 352 L336 245 L336 380 L412 380 L412 140 L336 140 L256 268 L176 140 Z"
+        fill="#ffffff"/>
+  <!-- Heart at the bottom center -->
+  <path d="M256 440 C242 422, 218 426, 218 448 C218 466, 256 484, 256 484 C256 484, 294 466, 294 448 C294 426, 270 422, 256 440 Z"
+        fill="#fce7f3"/>
+</svg>
