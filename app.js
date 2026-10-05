@@ -2455,15 +2455,20 @@ function updatePomDisplay(){
    =========================================================== */
 function showToast(text, src=''){
   const toast = qs('#quote-toast');
+  if(!toast) return;
   qs('#quote-text').textContent = text;
-  qs('#quote-src').textContent = src;
+  qs('#quote-src').textContent = src || '';
+  toast._dismissed = false;
   toast.classList.add('show');
   clearTimeout(toast._t);
-  toast._t = setTimeout(() => toast.classList.remove('show'), 5000);
+  toast._t = setTimeout(()=>dismissToast(), 5000);
 }
 function dismissToast(){
   const toast = qs('#quote-toast');
-  if(toast){toast.classList.remove('show'); clearTimeout(toast._t);}
+  if(!toast || toast._dismissed) return;
+  toast._dismissed = true;
+  toast.classList.remove('show');
+  clearTimeout(toast._t);
 }
 
 /* ---------- Live countdown tick (lightweight: updates numbers only, no full re-render) ---------- */
@@ -2985,15 +2990,36 @@ function initApp(){
   setAccent(getAccent().id);
   initPomodoro();
   resetPom();
-  // Toast dismiss (multiple events for iOS reliability)
+  // Toast dismiss — single handler with touch+click, no bubbling to background
   const tc = qs('#toast-close');
-  const doDismiss=(e)=>{e.stopPropagation();e.preventDefault();dismissToast();};
-  if(tc){
-    tc.addEventListener('click',doDismiss);
-    tc.addEventListener('touchend',doDismiss,{passive:false});
-  }
   const tt = qs('#quote-toast');
-  if(tt) tt.addEventListener('click', e=>{ if(e.target===tt) dismissToast(); });
+  function wireToast(){
+    if(!tc||!tt||tt._wired) return;
+    tt._wired = true;
+    let handled = false;
+    const dismissOnce = (e)=>{
+      if(handled) return;
+      handled = true;
+      setTimeout(()=>{handled=false;},400);
+      dismissToast();
+    };
+    // Close button: respond to first pointer event only
+    const closeBtn = tc;
+    ['pointerdown','touchstart','mousedown'].forEach(ev=>{
+      closeBtn.addEventListener(ev, (e)=>{
+        e.stopPropagation();
+        e.preventDefault();
+        dismissOnce();
+      }, {passive:false});
+    });
+    // Background click: only when clicking toast background itself (not a child)
+    ['pointerdown','click'].forEach(ev=>{
+      tt.addEventListener(ev,(e)=>{
+        if(e.target===tt) dismissOnce();
+      });
+    });
+  }
+  wireToast();
   renderDashboard(); // start on dashboard
   // What's New popup for this update (shows once)
   setTimeout(showWhatsNew, 600);
