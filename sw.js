@@ -1,6 +1,6 @@
-// MCAT Companion — offline service worker
-const CACHE = 'mcat-v6';
-const ASSETS = [
+// MCAT Companion — offline service worker (bump CACHE version on every deploy to bust old caches)
+const CACHE = 'mcat-v7';
+const APP_SHELL = [
   './',
   './index.html',
   './styles.css',
@@ -18,12 +18,14 @@ const ASSETS = [
   './icon-maskable-512.png',
 ];
 
+// Install: pre-cache new shell, immediately take control
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())
+    caches.open(CACHE).then(c => c.addAll(APP_SHELL)).then(() => self.skipWaiting())
   );
 });
 
+// Activate: delete old caches, claim all clients
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys => Promise.all(
@@ -32,23 +34,59 @@ self.addEventListener('activate', e => {
   );
 });
 
-// Cache-first for same-origin requests; network pass-through for Clarity/ntfy (analytics must reach server)
+// Tell open pages a new version is ready
+function broadcastUpdate(){
+  self.clients.matchAll({type:'window'}).then(clients=>{
+    clients.forEach(c=>c.postMessage({type:'SW_UPDATED'}));
+  });
+}
+
+// Strategy per request type:
+//   - Navigation/HTML: network-first, fall back to cache (so new deploys load on next visit)
+//   - App shell JS/CSS/manifest: stale-while-revalidate (instant now, updates in background)
+//   - Other same-origin GETs: cache-first with background revalidation
+//   - Cross-origin (Clarity/ntfy): never intercept (let them go to network directly)
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
-  // Never intercept analytics/third-party
-  if(url.hostname !== self.location.hostname) return;
+  if(url.hostname !== self.location.hostname) return; // analytics pass-through
   if(e.request.method !== 'GET') return;
+
+  const req = e.request;
+  const isNavigation = req.mode === 'navigate' ||
+                       (req.headers.get('accept')||'').includes('text/html');
+
+  if(isNavigation){
+    // Network-first for HTML
+    e.respondWith(
+      fetch(req).then(netRes => {
+        const copy = netRes.clone();
+        caches.open(CACHE).then(c=>c.put(req, copy)).catch(()=>{});
+        return netRes;
+      }).catch(()=>caches.match(req).then(cached=>cached || caches.match('./index.html')))
+    );
+    return;
+  }
+
+  // Stale-while-revalidate for assets
   e.respondWith(
-    caches.match(e.request).then(cached => {
-      if(cached) return cached;
-      return fetch(e.request).then(res => {
-        // Only cache successful same-origin GETs
-        if(res && res.status === 200){
-          const clone = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone)).catch(()=>{});
+    caches.match(req).then(cached => {
+      const fetchPromise = fetch(req).then(netRes => {
+        if(netRes && netRes.status === 200){
+          const copy = netRes.clone();
+          caches.open(CACHE).then(c=>c.put(req, copy)).catch(()=>{});
         }
-        return res;
-      }).catch(() => cached);
+        return netRes;
+      }).catch(()=>cached);
+      return cached || fetchPromise;
     })
   );
+});
+
+// When a client asks us to skip waiting (from update prompt)
+self.addEventListener('message', e => {
+  if(e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
+});
+// When this new SW becomes the controller, tell open pages to reload
+self.addEventListener('controllerchange', () => {
+  broadcastUpdate();
 });

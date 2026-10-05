@@ -116,7 +116,32 @@
   // Register service worker for offline + installable PWA
   if('serviceWorker' in navigator){
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js').catch(()=>{});
+      navigator.serviceWorker.register('sw.js').then(reg=>{
+        // If a new SW is waiting/just installed, reload once to pick up new version
+        if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
+        reg.addEventListener('updatefound',()=>{
+          const nw=reg.installing;
+          if(!nw)return;
+          nw.addEventListener('statechange',()=>{
+            if(nw.state==='installed' && navigator.serviceWorker.controller){
+              // New version ready after the next visit - show a toast via custom event
+              window.dispatchEvent(new CustomEvent('sw:update-ready'));
+            }
+          });
+        });
+      }).catch(()=>{});
+      // Listen for the new SW claiming control and reload
+      let reloading=false;
+      navigator.serviceWorker.addEventListener('controllerchange',()=>{
+        if(reloading)return;reloading=true;
+      });
+      // Reload page once after user accepts "new version" toast
+      window.addEventListener('sw:update-ready',()=>{
+        if(window.showToast){
+          window.showToast('✨ New version available — tap to update','Just deployed fresh features');
+          setTimeout(()=>{const t=document.getElementById('quote-toast');if(t)t.addEventListener('click',()=>location.reload(),{once:true});},300);
+        }
+      });
     });
   }
   // Detect "launched from home screen" (standalone display mode)
