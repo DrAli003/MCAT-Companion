@@ -39,11 +39,14 @@ const APP_SHELL = [
   './assets/fonts/Nunito-Latin.woff2',
   './assets/fonts/PlayfairDisplay-Latin.woff2'
 ];
-const CACHE = 'mcat-v21-combined-themes';
+const CACHE = 'mcat-v22-themes-scroll-hero';
 
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting())
+    // Cache each URL independently so one omitted optional asset cannot prevent the offline shell from installing.
+    caches.open(CACHE).then(cache => Promise.all(
+      APP_SHELL.map(path => cache.add(path).catch(() => null))
+    )).then(() => self.skipWaiting())
   );
 });
 

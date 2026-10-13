@@ -25,7 +25,7 @@ body.light .brand-title{color:#241543;}
 body.light .brand-leen{color:#241543;}
 body.light .brand-subtitle{color:#73658e;}
 body:not(.light) .nav-theme-control select{background:rgba(255,255,255,.08);color:var(--text);}
-@media(max-width:1300px),(pointer:coarse),(any-pointer:coarse){
+@media(max-width:768px),(pointer:coarse),(any-pointer:coarse){
   .nav-theme-control{width:100%;justify-content:space-between;min-height:48px;padding:6px 14px;border-radius:14px;}
   .nav-theme-control select{min-width:144px;max-width:60%;min-height:38px;}
 }
@@ -43,7 +43,7 @@ body .welcome-overlay{
 }
 .welcome-overlay .welcome-art{
   position:absolute;inset:0;z-index:0;
-  background-image:linear-gradient(90deg,rgba(10,5,24,.99) 0%,rgba(10,5,24,.96) 29%,rgba(10,5,24,.79) 48%,rgba(10,5,24,.15) 80%,rgba(10,5,24,.08) 100%),linear-gradient(0deg,rgba(9,4,21,.68),transparent 54%),url('./assets/hero-atlas.jpg');
+  background-image:linear-gradient(90deg,rgba(10,5,24,.99) 0%,rgba(10,5,24,.96) 29%,rgba(10,5,24,.79) 48%,rgba(10,5,24,.15) 80%,rgba(10,5,24,.08) 100%),linear-gradient(0deg,rgba(9,4,21,.68),transparent 54%),var(--hero-atlas-art,url('./assets/hero-atlas.jpg'));
   background-size:cover,cover,cover;background-position:center,center,72% center;
 }
 .welcome-copy{position:relative;z-index:2;width:min(57%,570px);padding:58px 0 62px 58px;}

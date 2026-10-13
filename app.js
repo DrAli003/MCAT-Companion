@@ -249,7 +249,7 @@ function renderDashboard(){
         <div class="hero-stage-overlay" aria-hidden="true"></div>
         <div class="hero-stage-main">
           <div class="stage-identity">
-            <div class="stage-overline"><span class="stage-pulse"></span> MCAT COMPANION <i>·</i> NEUROLOGY 2027</div>
+            <div class="stage-overline"><span class="stage-pulse"></span> MCAT COMPANION FOR A FUTURE NEUROLOGIST</div>
             <h1 class="stage-name">Dr. Leen</h1>
             <div class="stage-role">FUTURE NEUROLOGIST</div>
             <p class="stage-note">One question at a time. Keep your focus on the next right step.</p>

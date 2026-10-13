@@ -25,6 +25,7 @@ A vibrant, all-in-one MCAT study dashboard built for future doctors. Test date: 
 - **🌙/☀️ Light/Dark Toggle** — Switch the active style between light and dark modes.
 - **🔊 Sound Effects** (toggleable) — Soft chimes for correct answers, wrong answers, and quiz completion.
 - **📱 Offline/PWA support** — A service worker precaches the app, theme artwork, floral fonts, and install icons. Keep the project’s folder structure when deploying.
+- **🖥️ Responsive navigation** — Laptops keep the page links visible; phones and touch-enabled iPads use a vertically scrollable hamburger menu.
 
 ## How to Host on GitHub Pages
 
@@ -34,7 +35,7 @@ A vibrant, all-in-one MCAT study dashboard built for future doctors. Test date: 
 4. The production URL is `https://drali003.github.io/MCAT-Companion/` (or your repository’s corresponding Pages URL).
 5. After Pages finishes publishing, open the new URL and refresh once if an old service-worker cache is still active.
 
-The site is static and GitHub Pages-ready: all app assets use relative paths, and the service worker caches the three styles, app files, icons, floral fonts, and physician artwork for offline use after the first successful visit. Study progress, the selected style, six-color accent, light/dark preference, and sound preference remain in browser storage; manual sync/backup is available in Tools.
+The site is static and GitHub Pages-ready: all app assets use relative paths, and the service worker caches the three styles, app files, icons, floral fonts, and physician artwork for offline use after the first successful visit. The primary hijabi hero portrait is also embedded as a CSS fallback so the countdown does not go blank if the nested artwork folder is accidentally omitted; keep `assets/` uploaded for the complete offline set, floral pattern, fonts, and icons. Study progress, the selected style, six-color accent, light/dark preference, and sound preference remain in browser storage; manual sync/backup is available in Tools.
 
 ## Customization
 
