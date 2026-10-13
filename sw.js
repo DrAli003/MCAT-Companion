@@ -19,11 +19,10 @@ const APP_SHELL = [
   './apple-touch-icon.png',
   './icon-maskable-512.png',
   './logo.png',
-  './assets/brain-bg.webp',
-  './assets/doctor-bg.webp',
-  './assets/hero-atlas.webp'
+  './assets/brain-bg.jpg',
+  './assets/hero-atlas.jpg'
 ];
-const CACHE = 'mcat-v18-neuro-responsive';
+const CACHE = 'mcat-v20-neuro-media-menu';
 
 self.addEventListener('install', event => {
   event.waitUntil(
