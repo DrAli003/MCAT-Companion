@@ -646,7 +646,7 @@ function nextPrayer(){
 const SYNC_KEYS = [
   'mcat-stats','mcat-fl-scores','mcat-test-date','mcat-schedule','mcat-tasks',
   'mcat-wrong','mcat-self-letter','mcat-wins','mcat-tasbih','mcat-checklist',
-  'mcat-pomo-history','mcat-accent','mcat-theme','mcat-sound','mcat-welcomed','mcat-welcomed-neuro-atelier','mcat-letter-opened'
+  'mcat-pomo-history','mcat-accent','mcat-theme','mcat-visual-theme','mcat-sound','mcat-welcomed','mcat-welcomed-neuro-atelier','mcat-letter-opened'
 ];
 const SYNC_VERSION = 1;
 

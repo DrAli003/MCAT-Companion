@@ -78,8 +78,51 @@ function getStreak(){
   return streak;
 }
 
+/* ---------- Visual theme selector ---------- */
+const VISUAL_THEMES = new Set(['basic','floral','neuro']);
+function currentVisualTheme(){
+  const stored=localStorage.getItem('mcat-visual-theme');
+  return VISUAL_THEMES.has(stored)?stored:'neuro';
+}
+function applyVisualTheme(theme,save=true){
+  const selected=VISUAL_THEMES.has(theme)?theme:'neuro';
+  document.documentElement.dataset.visualTheme=selected;
+  document.body.dataset.visualTheme=selected;
+  const neuroCss=qs('#theme-neuro-css');
+  const floralCss=qs('#theme-floral-css');
+  if(neuroCss) neuroCss.disabled=selected!=='neuro';
+  if(floralCss) floralCss.disabled=selected!=='floral';
+
+  const floral=selected==='floral';
+  const logo=qs('.brand-icon');
+  if(logo){logo.src=floral?'logo-floral.png':'logo.png';logo.alt='';}
+  const favicon64=qs('#favicon-link');
+  const favicon192=qs('#favicon-192-link');
+  const appleIcon=qs('#apple-touch-icon-link');
+  const manifest=qs('#app-manifest');
+  if(favicon64) favicon64.href=floral?'favicon-floral.png':'favicon.png';
+  if(favicon192) favicon192.href=floral?'icon-192-floral.png':'icon-192.png';
+  if(appleIcon) appleIcon.href=floral?'apple-touch-icon-floral.png':'apple-touch-icon.png';
+  if(manifest) manifest.href=floral?'manifest-floral.webmanifest':'manifest.webmanifest';
+  document.querySelectorAll('meta[name="theme-color"]').forEach(meta=>{
+    const light=meta.media&&meta.media.includes('light');
+    const colors=floral?(light?'#fff8fb':'#281c2d'):
+      selected==='basic'?(light?'#f7f5fb':'#070317'):(light?'#f6f2ff':'#0b0720');
+    meta.content=colors;
+  });
+  const picker=qs('#visual-theme');
+  if(picker&&picker.value!==selected) picker.value=selected;
+  if(save) localStorage.setItem('mcat-visual-theme',selected);
+}
+function initVisualTheme(){
+  const picker=qs('#visual-theme');
+  applyVisualTheme(currentVisualTheme(),false);
+  if(picker) picker.addEventListener('change',()=>applyVisualTheme(picker.value,true));
+}
+
 /* ---------- Theme toggle ---------- */
 function initTheme(){
+
   const btn = qs('#theme-toggle-btn');
   if(!btn) return;
   btn.textContent = state.lightTheme ? '☀️' : '🌙';
@@ -3152,6 +3195,7 @@ function initApp(){
     btn.addEventListener('click', () => navigate(btn.dataset.section));
   });
   initNavToggle();
+  initVisualTheme();
   initTheme();
   setAccent(getAccent().id);
   initPomodoro();

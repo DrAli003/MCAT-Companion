@@ -10,18 +10,22 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="MCAT">
 <meta name="mobile-web-app-capable" content="yes">
-  <link rel="icon" type="image/png" sizes="64x64" href="favicon.png">
-  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="manifest" href="manifest.webmanifest">
+<script>try{var vt=localStorage.getItem('mcat-visual-theme');document.documentElement.dataset.visualTheme=(vt==='basic'||vt==='floral'||vt==='neuro')?vt:'neuro'}catch(e){document.documentElement.dataset.visualTheme='neuro'}</script>
+  <link id="favicon-link" rel="icon" type="image/png" sizes="64x64" href="favicon.png">
+  <link id="favicon-192-link" rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link id="apple-touch-icon-link" rel="apple-touch-icon" href="apple-touch-icon.png">
+<link id="app-manifest" rel="manifest" href="manifest.webmanifest">
 <title>Dr. Leen's MCAT Companion</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
-<link rel="stylesheet" href="neuro.css">
+<link rel="stylesheet" href="theme-shell.css">
+<link id="theme-neuro-css" rel="stylesheet" href="neuro.css">
 <link rel="stylesheet" href="hero-refine.css">
 <link rel="stylesheet" href="responsive-neuro.css">
+<link id="theme-floral-css" rel="stylesheet" href="floral-theme.css" disabled>
+<script>(function(){try{var t=localStorage.getItem('mcat-visual-theme');if(t!=='basic'&&t!=='floral'&&t!=='neuro')t='neuro';document.documentElement.dataset.visualTheme=t;var n=document.getElementById('theme-neuro-css'),f=document.getElementById('theme-floral-css');if(n)n.disabled=t!=='neuro';if(f)f.disabled=t!=='floral'}catch(e){}})();</script>
   <script type="text/javascript">
     (function(c,l,a,r,i,t,y){
         c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
@@ -50,15 +54,23 @@
       <img class="brand-icon" src="logo.png" alt="">
       <div class="brand-copy">
         <div class="brand-title"><span class="brand-dr">Dr.</span><span class="brand-leen">Leen</span></div>
-        <div class="brand-subtitle">MCAT COMPANION <span>NEUROLOGY · 2027</span></div>
+        <div class="brand-subtitle">MCAT COMPANION</div>
       </div>
     </div>
   </div>
-  <button class="nav-toggle" id="nav-toggle" aria-label="Menu" aria-expanded="false">
+  <button class="nav-toggle" id="nav-toggle" aria-label="Menu" aria-expanded="false" aria-controls="nav-links">
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
   </button>
   <div class="nav-links" id="nav-links">
     <button class="nav-link active" data-section="dashboard">Dashboard</button>
+    <label class="nav-theme-control" for="visual-theme">
+      <span>Style</span>
+      <select id="visual-theme" aria-label="Choose website style">
+        <option value="basic">Basic</option>
+        <option value="floral">Floral</option>
+        <option value="neuro" selected>Neuro</option>
+      </select>
+    </label>
     <button class="nav-link" data-section="schedule">Schedule</button>
     <button class="nav-link" data-section="tasks">Tasks</button>
     <button class="nav-link" data-section="amino">Amino Acids</button>
@@ -78,7 +90,7 @@
     <button class="nav-link" data-section="journey">Journey</button>
     <button class="nav-link" data-section="testday" title="Sealed Letter">🔒</button>
     <button class="nav-link" data-section="dedication" title="Note">✉️</button>
-    <button class="nav-link" id="theme-toggle-btn" title="Toggle theme">🌙</button>
+    <button class="nav-link" id="theme-toggle-btn" title="Toggle light/dark mode">🌙</button>
     <button class="nav-link" data-section="timer">⏱️</button>
   </div>
 </nav>

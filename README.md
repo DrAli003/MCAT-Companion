@@ -21,26 +21,20 @@ A vibrant, all-in-one MCAT study dashboard built for future doctors. Test date: 
 - **📊 FL Score Tracker** — Log practice exam scores (Blueprint/Altius/AAMC/etc.) with an SVG progress chart, target score line, color-coded by company, and editable exam list. AAMC scores show in green (most accurate predictor).
 - **🤍 Du'as Page** — Arabic + transliteration + meaning of key supplications for seeking knowledge and exams (Rabbi zidni 'ilma, Rabbish rah li sadri, etc.), plus practical tips for barakah in studies.
 - **⏱️ Floating Pomodoro Timer** — 25/5/15 minute sessions with animated circular progress.
-- **🌙/☀️ Theme Toggle** — Switch between dark (default, purple/pink gradient) and light themes.
+- **🎨 Three visual styles** — Choose Basic, Floral, or Neuro from the in-app Style menu; the choice is saved locally and included in manual sync. Each style keeps the six-color accent switcher and the light/dark toggle.
+- **🌙/☀️ Light/Dark Toggle** — Switch the active style between light and dark modes.
 - **🔊 Sound Effects** (toggleable) — Soft chimes for correct answers, wrong answers, and quiz completion.
+- **📱 Offline/PWA support** — A service worker precaches the app, theme artwork, floral fonts, and install icons. Keep the project’s folder structure when deploying.
 
 ## How to Host on GitHub Pages
 
-1. Create a new GitHub repository (e.g., `mcat-companion`).
-2. Upload the 6 files to the repo:
-   - `index.html`
-   - `styles.css`
-   - `data.js`
-   - `data2.js`
-   - `structures.js`
-   - `app.js`
-3. Go to repository **Settings → Pages**.
-4. Under "Source", select **Deploy from a branch**, choose `main` branch and `/ (root)` folder, then Save.
-5. Wait ~1 minute — your site will be live at `https://<your-username>.github.io/mcat-companion/`
+1. Download and unzip this complete project.
+2. Upload **all files and folders** to the repository root. Keep `assets/` and `assets/fonts/` intact; do not upload only the HTML/JS files.
+3. In repository **Settings → Pages**, choose **Deploy from a branch**, select `main` and `/ (root)`, then Save.
+4. The production URL is `https://drali003.github.io/MCAT-Companion/` (or your repository’s corresponding Pages URL).
+5. After Pages finishes publishing, open the new URL and refresh once if an old service-worker cache is still active.
 
-Then share that link with her, and she can open it on phone, laptop, or tablet any time inshaAllah. 🌙
-
-It works fully offline after first load — no external dependencies beyond Google Fonts. All her data (tasks, scores, schedule edits, theme, sound preference) saves in her browser's localStorage.
+The site is static and GitHub Pages-ready: all app assets use relative paths, and the service worker caches the three styles, app files, icons, floral fonts, and physician artwork for offline use after the first successful visit. Study progress, the selected style, six-color accent, light/dark preference, and sound preference remain in browser storage; manual sync/backup is available in Tools.
 
 ## Customization
 
@@ -55,7 +49,7 @@ It works fully offline after first load — no external dependencies beyond Goog
 ## Built With
 
 - Pure HTML, CSS, and vanilla JavaScript — no build tools, no dependencies.
-- Fonts from Google Fonts (Plus Jakarta Sans + Space Grotesk + Amiri for Arabic).
+- Plus Jakarta Sans, Space Grotesk, and Amiri use Google Fonts; Floral also includes local Nunito, Playfair Display, Dancing Script, and Arabic font files so that skin works offline.
 - Sounds generated via Web Audio API (no audio files).
 - Content compiled from AAMC guidance, r/MCAT 515+ consensus, Jack Westin, Khan Academy, UWorld strategies, Kaplan/TPR high-yield lists, and SDN.
 

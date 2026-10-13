@@ -1,9 +1,11 @@
-// MCAT Companion — offline service worker. Bump the cache tag for each release.
+// MCAT Companion — offline service worker. Cache all three visual themes and their local assets.
 const APP_SHELL = [
   './',
   './index.html',
   './styles.css',
+  './theme-shell.css',
   './neuro.css',
+  './floral-theme.css',
   './hero-refine.css',
   './responsive-neuro.css',
   './neural.js',
@@ -13,16 +15,31 @@ const APP_SHELL = [
   './structures.js',
   './extras.js',
   './manifest.webmanifest',
+  './manifest-floral.webmanifest',
   './favicon.png',
+  './favicon-floral.png',
   './icon-192.png',
+  './icon-192-floral.png',
   './icon-512.png',
+  './icon-512-floral.png',
   './apple-touch-icon.png',
+  './apple-touch-icon-floral.png',
   './icon-maskable-512.png',
+  './icon-maskable-512-floral.png',
   './logo.png',
+  './logo-floral.png',
   './assets/brain-bg.jpg',
-  './assets/hero-atlas.jpg'
+  './assets/hero-atlas.jpg',
+  './assets/hero-atlas-floral.jpg',
+  './assets/floral-neuro-pattern.jpg',
+  './assets/dr-leen-icon-floral.png',
+  './assets/fonts/Amiri-Arabic-Bold.woff2',
+  './assets/fonts/Amiri-Arabic-Regular.woff2',
+  './assets/fonts/DancingScript-Latin.woff2',
+  './assets/fonts/Nunito-Latin.woff2',
+  './assets/fonts/PlayfairDisplay-Latin.woff2'
 ];
-const CACHE = 'mcat-v20-neuro-media-menu';
+const CACHE = 'mcat-v21-combined-themes';
 
 self.addEventListener('install', event => {
   event.waitUntil(
