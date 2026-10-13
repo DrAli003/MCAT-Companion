@@ -1,92 +1,89 @@
-// MCAT Companion — offline service worker (bump CACHE version on every deploy to bust old caches)
-const CACHE = 'mcat-v7';
+// MCAT Companion — offline service worker. Bump the cache tag for each release.
 const APP_SHELL = [
   './',
   './index.html',
   './styles.css',
+  './neuro.css',
+  './hero-refine.css',
+  './cute-preview.css',
+  './neural.js',
   './app.js',
   './data.js',
   './data2.js',
   './structures.js',
   './extras.js',
   './manifest.webmanifest',
-  './favicon.svg',
   './favicon.png',
   './icon-192.png',
   './icon-512.png',
   './apple-touch-icon.png',
   './icon-maskable-512.png',
+  './logo.png',
+  './assets/brain-bg.webp',
+  './assets/doctor-bg.webp',
+  './assets/hero-atlas.webp',
+  './assets/floral-neuro-pattern.webp',
+  './assets/fonts/Nunito-Latin.woff2',
+  './assets/fonts/PlayfairDisplay-Latin.woff2',
+  './assets/fonts/DancingScript-Latin.woff2',
+  './assets/fonts/Amiri-Arabic-Regular.woff2',
+  './assets/fonts/Amiri-Arabic-Bold.woff2'
 ];
+const CACHE = 'mcat-cute-preview-v3-floral-icon';
 
-// Install: pre-cache new shell, immediately take control
-self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(APP_SHELL)).then(() => self.skipWaiting())
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting())
   );
 });
 
-// Activate: delete old caches, claim all clients
-self.addEventListener('activate', e => {
-  e.waitUntil(
+self.addEventListener('activate', event => {
+  event.waitUntil(
     caches.keys().then(keys => Promise.all(
-      keys.filter(k => k !== CACHE).map(k => caches.delete(k))
+      keys.filter(key => key !== CACHE).map(key => caches.delete(key))
     )).then(() => self.clients.claim())
   );
 });
 
-// Tell open pages a new version is ready
 function broadcastUpdate(){
-  self.clients.matchAll({type:'window'}).then(clients=>{
-    clients.forEach(c=>c.postMessage({type:'SW_UPDATED'}));
+  self.clients.matchAll({type:'window'}).then(clients => {
+    clients.forEach(client => client.postMessage({type:'SW_UPDATED'}));
   });
 }
 
-// Strategy per request type:
-//   - Navigation/HTML: network-first, fall back to cache (so new deploys load on next visit)
-//   - App shell JS/CSS/manifest: stale-while-revalidate (instant now, updates in background)
-//   - Other same-origin GETs: cache-first with background revalidation
-//   - Cross-origin (Clarity/ntfy): never intercept (let them go to network directly)
-self.addEventListener('fetch', e => {
-  const url = new URL(e.request.url);
-  if(url.hostname !== self.location.hostname) return; // analytics pass-through
-  if(e.request.method !== 'GET') return;
-
-  const req = e.request;
-  const isNavigation = req.mode === 'navigate' ||
-                       (req.headers.get('accept')||'').includes('text/html');
+self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url);
+  if(url.hostname !== self.location.hostname || event.request.method !== 'GET') return;
+  const request = event.request;
+  const isNavigation = request.mode === 'navigate' ||
+    (request.headers.get('accept') || '').includes('text/html');
 
   if(isNavigation){
-    // Network-first for HTML
-    e.respondWith(
-      fetch(req).then(netRes => {
-        const copy = netRes.clone();
-        caches.open(CACHE).then(c=>c.put(req, copy)).catch(()=>{});
-        return netRes;
-      }).catch(()=>caches.match(req).then(cached=>cached || caches.match('./index.html')))
+    event.respondWith(
+      fetch(request).then(response => {
+        const copy = response.clone();
+        caches.open(CACHE).then(cache => cache.put(request, copy)).catch(() => {});
+        return response;
+      }).catch(() => caches.match(request).then(cached => cached || caches.match('./index.html')))
     );
     return;
   }
 
-  // Stale-while-revalidate for assets
-  e.respondWith(
-    caches.match(req).then(cached => {
-      const fetchPromise = fetch(req).then(netRes => {
-        if(netRes && netRes.status === 200){
-          const copy = netRes.clone();
-          caches.open(CACHE).then(c=>c.put(req, copy)).catch(()=>{});
+  event.respondWith(
+    caches.match(request).then(cached => {
+      const update = fetch(request).then(response => {
+        if(response && response.status === 200){
+          const copy = response.clone();
+          caches.open(CACHE).then(cache => cache.put(request, copy)).catch(() => {});
         }
-        return netRes;
-      }).catch(()=>cached);
-      return cached || fetchPromise;
+        return response;
+      }).catch(() => cached);
+      return cached || update;
     })
   );
 });
 
-// When a client asks us to skip waiting (from update prompt)
-self.addEventListener('message', e => {
-  if(e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
+self.addEventListener('message', event => {
+  if(event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
-// When this new SW becomes the controller, tell open pages to reload
-self.addEventListener('controllerchange', () => {
-  broadcastUpdate();
-});
+self.addEventListener('controllerchange', broadcastUpdate);

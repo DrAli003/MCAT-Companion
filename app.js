@@ -201,37 +201,38 @@ function renderDashboard(){
 
   app.innerHTML = `
     <section class="section active">
-      <div class="hero-grid">
-        <div class="countdown-card">
-          <div class="countdown-label">Test Day Countdown</div>
-          <div style="font-family:'Space Grotesk'; font-size:1.1rem; font-weight:500; color:var(--text-dim); margin-bottom:4px;">September 3, 2027</div>
-          <div class="countdown-days">${days}</div>
-          <div class="countdown-sub">days until test day inshaAllah</div>
-          <div class="countdown-grid">
-            <div class="countdown-box"><div class="countdown-num">${days}</div><div class="countdown-unit">days</div></div>
-            <div class="countdown-box"><div class="countdown-num">${hours}</div><div class="countdown-unit">hours</div></div>
-            <div class="countdown-box"><div class="countdown-num">${mins}</div><div class="countdown-unit">mins</div></div>
-            <div class="countdown-box"><div class="countdown-num">${secs}</div><div class="countdown-unit">secs</div></div>
+      <article class="hero-stage" aria-label="Dr. Leen's MCAT and neurology study countdown">
+        <div class="hero-stage-art" aria-hidden="true"></div>
+        <div class="hero-stage-overlay" aria-hidden="true"></div>
+        <div class="hero-stage-main">
+          <div class="stage-identity">
+            <div class="stage-overline"><span class="stage-pulse"></span> MCAT COMPANION <i>·</i> NEUROLOGY 2027</div>
+            <h1 class="stage-name">Dr. Leen</h1>
+            <div class="stage-role">FUTURE NEUROLOGIST</div>
+            <p class="stage-note">One question at a time. Keep your focus on the next right step.</p>
           </div>
-          <div class="mt-16" style="display:inline-flex; align-items:center; gap:8px; padding:8px 16px; border-radius:999px; background:rgba(0,0,0,0.3); border:1px solid var(--border);">
-            <span style="font-size:1.1rem">${phaseEmoji}</span>
-            <span style="font-weight:600; font-size:0.9rem; color:${phaseColor}">${phaseLabel}</span>
+          <div class="stage-time">
+            <div class="stage-time-head">
+              <div><div class="stage-time-label">THE COUNTDOWN</div><div class="stage-time-date">September 3, 2027</div></div>
+              <div class="stage-phase"><span>${phaseEmoji}</span><b style="color:${phaseColor}">${phaseLabel}</b></div>
+            </div>
+            <div class="stage-time-row">
+              <div class="stage-days"><strong>${days}</strong><span>DAYS<br>TO GO</span></div>
+              <div class="stage-clock">
+                <div><b>${hours}</b><small>HOURS</small></div>
+                <div><b>${mins}</b><small>MINUTES</small></div>
+                <div><b>${secs}</b><small>SECONDS</small></div>
+              </div>
+            </div>
           </div>
+          <div class="stage-footnote"><span class="stage-foot-line"></span> A little closer with every focused session, inshaAllah.</div>
         </div>
-
-        <div class="card quote-card">
-          <div class="quote-mark">"</div>
-          <p class="quote-text" id="dash-quote-text">${quote.text}</p>
-          <div class="flex-between">
-            <span class="quote-src" id="dash-quote-src">${quote.src}</span>
-            <button class="btn btn-sm" id="new-quote-btn" title="New quote">↻ New Quote</button>
-          </div>
-        </div>
-      </div>
+        <div class="stage-index" aria-hidden="true"><span>THE NEXT CHAPTER</span><b>01 <i>/</i> 27</b></div>
+      </article>
 
       <!-- Personal greeting + Level + QOTD -->
       <div class="grid grid-2 mb-16">
-        <div class="card-flat" style="padding:24px; border:1px solid var(--border-strong); background:linear-gradient(135deg,rgba(167,139,250,0.08),rgba(236,72,153,0.05));">
+        <div class="card-flat greeting-card">
           <div style="font-size:0.78rem; text-transform:uppercase; letter-spacing:0.12em; color:var(--purple); font-weight:700; margin-bottom:6px;">Assalamu alaykum, ${USER_NAME}</div>
           ${(()=>{
             const s=loadStats(); const lv=getLevel(s.xp);
@@ -247,9 +248,6 @@ function renderDashboard(){
               </div>
             `;
           })()}
-          <p style="margin-top:12px; font-size:0.9rem; color:var(--text-dim); margin-bottom:0;">
-            Today is a step closer to that white coat, ${SHORT_NAME}. Be consistent, make du'a, and trust Allah's plan.
-          </p>
         </div>
 
         <div class="qotd-card" id="qotd-wrap">
@@ -273,6 +271,15 @@ function renderDashboard(){
           <div class="stat-label">Study Streak</div>
           <div class="stat-value" style="color:var(--orange)">${getStreak()}</div>
         </div>
+        <div class="stat-card" id="plant-card">
+          <div class="stat-icon plant-emoji" style="animation:plant-sway 4s ease-in-out infinite;transform-origin:bottom center;font-size:2.1rem;line-height:1;">${(()=>{const p=getPlantStage();return p.stage.emoji;})()}</div>
+          <div class="stat-label" id="plant-label">${(()=>{const p=getPlantStage();return p.stage.label;})()}</div>
+          <div class="stat-value" style="font-size:1rem;color:var(--green);">${Math.round((()=>{const p=getPlantStage();return p.pct;})())}%</div>
+          <div style="height:4px;background:rgba(255,255,255,0.08);border-radius:999px;overflow:hidden;margin-top:6px;width:100%;">
+            <div id="plant-bar" style="height:100%;background:linear-gradient(90deg,var(--green),var(--purple));width:${(()=>{const p=getPlantStage();return p.pct;})().toFixed(0)}%;border-radius:999px;transition:width 0.6s;"></div>
+          </div>
+          <div style="font-size:0.7rem;color:var(--text-mute);margin-top:4px;line-height:1.3;" id="plant-hint">${(()=>{const p=getPlantStage();return p.stage.hint;})()}</div>
+        </div>
         <div class="stat-card">
           <div class="stat-icon">📖</div>
           <div class="stat-label">Amino Acids</div>
@@ -290,7 +297,17 @@ function renderDashboard(){
         </div>
       </div>
 
-      <h2 style="margin-bottom:14px;">Quick Start</h2>
+      <article class="daily-verse-card" aria-label="Daily verse and reflection">
+        <div class="verse-seal" aria-hidden="true"><span>✦</span></div>
+        <div class="verse-copy">
+          <div class="verse-kicker">A MOMENT OF REFLECTION <span>· DAILY VERSE & WISDOM</span></div>
+          <p id="dash-quote-text">${quote.text}</p>
+          <cite id="dash-quote-src">${quote.src}</cite>
+        </div>
+        <button class="verse-refresh" id="new-quote-btn" type="button" title="Show another reflection" aria-label="Show another reflection"><span>↻</span><small>another</small></button>
+      </article>
+
+      <h2 class="quick-start-heading">Quick Start</h2>
       <div class="quick-actions">
         <button class="quick-action" data-jump="tasks">
           <div class="qa-icon">✅</div>
@@ -371,11 +388,19 @@ function renderDashboard(){
     </section>
   `;
 
-  // New quote button
-  qs('#new-quote-btn').addEventListener('click', () => {
-    const q = QUOTES[Math.floor(Math.random()*QUOTES.length)];
-    qs('#dash-quote-text').textContent = q.text;
-    qs('#dash-quote-src').textContent = q.src;
+  // Daily reflection refresh
+  const qb = qs('#new-quote-btn');
+  if(qb) qb.addEventListener('click', () => {
+    let q = QUOTES[Math.floor(Math.random()*QUOTES.length)];
+    if(QUOTES.length > 1 && state._currentQuote && q === state._currentQuote){
+      q = QUOTES[(QUOTES.indexOf(q) + 1) % QUOTES.length];
+    }
+    state._currentQuote = q;
+    const qt = qs('#dash-quote-text'), src = qs('#dash-quote-src');
+    if(qt) qt.textContent = q.text;
+    if(src) src.textContent = q.src;
+    const card = qs('.daily-verse-card');
+    if(card){ card.classList.remove('verse-refreshing'); void card.offsetWidth; card.classList.add('verse-refreshing'); }
   });
 
   // Quick action buttons
@@ -405,9 +430,10 @@ function renderDashboard(){
   if(badgeBtn) badgeBtn.addEventListener('click',()=>navigate('achievements'));
 
   // First-visit welcome
-  if(!localStorage.getItem('mcat-welcomed')){
+  const welcomeKey = 'mcat-welcomed-neuro-atelier';
+  if(!localStorage.getItem(welcomeKey)){
     showWelcome();
-    localStorage.setItem('mcat-welcomed','true');
+    localStorage.setItem(welcomeKey,'true');
   }
 }
 
@@ -415,15 +441,16 @@ function showWelcome(){
   const overlay = document.createElement('div');
   overlay.className='welcome-overlay';
   overlay.innerHTML = `
-    <div class="welcome-card" style="animation:fadeUp 0.7s ease;">
-      <div style="font-size:5rem;">🩺</div>
-      <div class="welcome-title">Welcome, Dr. Leen</div>
-      <p class="welcome-sub">Your MCAT companion is ready. Let's get you to that white coat inshaAllah.</p>
-      <div style="font-size:1.2rem; line-height:1.8; color:var(--text-dim); margin:20px 0;">
-        "Indeed, with hardship comes ease."<br>
-        <span style="color:var(--purple); font-size:0.95rem; font-weight:600;">— Qur'an 94:5</span>
+    <div class="welcome-card">
+      <div class="welcome-art" aria-hidden="true"></div>
+      <div class="welcome-copy">
+        <div class="welcome-kicker"><span></span> YOUR STUDY STUDIO · NEUROLOGY 2027</div>
+        <div class="welcome-title">Welcome,<br><strong>Dr. Leen.</strong></div>
+        <p class="welcome-sub">A quieter place to focus. A bigger vision to keep you moving. Your next chapter starts here, inshaAllah.</p>
+        <div class="welcome-verse"><span>94:5 · A PROMISE TO KEEP CLOSE</span><blockquote>“Indeed, with hardship comes ease.”</blockquote></div>
+        <button class="btn btn-primary" id="welcome-begin"><span>Bismillah — let's begin</span><i aria-hidden="true">→</i></button>
       </div>
-      <button class="btn btn-primary" id="welcome-begin" style="font-size:1rem; padding:14px 36px;">Bismillah — let's begin</button>
+      <div class="welcome-edition" aria-hidden="true">MCAT COMPANION <b>01 / 27</b></div>
     </div>
   `;
   document.body.appendChild(overlay);
@@ -432,7 +459,7 @@ function showWelcome(){
     overlay.style.transition='opacity 0.5s';
     setTimeout(()=>overlay.remove(),500);
     awardXP(10,'Welcome');
-    launchConfetti();
+    launchHearts();
   });
 }
 
@@ -767,8 +794,8 @@ function renderTasbih(){
     if(cur.count>=(cur.target||preset.target)){
       saveStats(Object.assign(loadStats(),{tasbihCompleted:true}));
       checkAchievements();
-      showToast('✅ MashaAllah! Round complete +30 XP','May Allah accept your worship');
-      launchConfetti();
+      showToast('✅ MashaAllah! Round complete +30 XP','May Allah accept your worship, Leen 🤍');
+      launchHearts();
       awardXP(30,'Tasbih round completed');
       cur.count=0;
     }
@@ -2490,7 +2517,7 @@ function openPomodoro(){
         <svg class="pom-svg" width="200" height="200" viewBox="0 0 200 200">
           <defs>
             <linearGradient id="pomGrad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stop-color="#a78bfa"/>
+              <stop offset="0%" stop-color="var(--purple)"/>
               <stop offset="100%" stop-color="#ec4899"/>
             </linearGradient>
           </defs>
@@ -2537,7 +2564,21 @@ function togglePom(){
           recordPomoDay(25);
           awardXP(15, 'Pomodoro complete');
           showToast('🎉 Focus session complete! +15 XP', 'Take a well-deserved break');
-          launchConfetti();
+          launchHearts();
+          // Every few pomodoros, a gentle self-care nudge appears a bit later
+          const n = maybeNudge(s.pomodorosCompleted);
+          if(n){
+            setTimeout(()=>showToast(`${n.emoji} ${n.text}`), 3500);
+          }
+          // Plant stage-up celebration
+          const nowStage = getPlantStage();
+          setTimeout(()=>{
+            const fresh = getPlantStage();
+            if(fresh.curIdx > nowStage.curIdx){
+              showToast(`🌱 Your plant grew! It's a ${fresh.stage.label} now.`, `MashaAllah, ${SHORT_NAME} — keep watering it with effort.`);
+              launchHearts();
+            }
+          },1500);
         } else {
           showToast('⏰ Break over! Ready to focus?');
         }
@@ -3011,14 +3052,14 @@ function drawScoreChart(scored, target){
       <defs>
         <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="#ec4899"/>
-          <stop offset="100%" stop-color="#a78bfa" stop-opacity="0"/>
+          <stop offset="100%" stop-color="var(--purple)" stop-opacity="0"/>
         </linearGradient>
       </defs>
       <!-- line -->
       ${pts.length>1?`<path d="${poly}" fill="none" stroke="url(#gradline)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`:''}
       <defs>
         <linearGradient id="gradline" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stop-color="#a78bfa"/>
+          <stop offset="0%" stop-color="var(--purple)"/>
           <stop offset="100%" stop-color="#ec4899"/>
         </linearGradient>
       </defs>
@@ -3145,9 +3186,7 @@ function initApp(){
     });
   }
   wireToast();
-  renderDashboard(); // start on dashboard
-  // What's New popup for this update (shows once)
-  setTimeout(showWhatsNew, 600);
+  renderDashboard(); // start on dashboard; the redesigned Bismillah welcome is the release introduction.
 }
 
 function showWhatsNew(){

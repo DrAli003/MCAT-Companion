@@ -6,6 +6,58 @@
 const USER_NAME = "Dr. Leen";
 const SHORT_NAME = "Leen";
 
+// ---------- GROWTH PLANT ----------
+// Stages based on total focus minutes ever pomodoro'd.
+const PLANT_STAGES = [
+  {min:0,    emoji:'🌰', label:'Seed',       hint:'Plant the seed — start a focus session to sprout.'},
+  {min:15,   emoji:'🌱', label:'Sprout',     hint:'A little sprout! Keep watering it with focus minutes.'},
+  {min:60,   emoji:'🌿', label:'Seedling',   hint:'Tender leaves forming — your seedling is settling in.'},
+  {min:180,  emoji:'🪴', label:'Potted plant',hint:'Look at you — growing nicely, habibti.'},
+  {min:420,  emoji:'🌳', label:'Sapling',    hint:'Stronger now, roots going deep.'},
+  {min:900,  emoji:'🌳', label:'Tree',       hint:'A full tree in bloom. May your knowledge shade others.'},
+  {min:1800, emoji:'🌸', label:'Blossoms',   hint:'Pink blossoms! SubhanAllah, you\'ve come so far.'},
+  {min:3600, emoji:'💮', label:'Flowers',    hint:'A garden of effort. MashaAllah, Dr. Leen.'},
+];
+function getPlantStage(){
+  const hist = getPomoHistory();
+  let total = 0;
+  Object.values(hist).forEach(min => total += min||0);
+  let cur = PLANT_STAGES[0], next = PLANT_STAGES[1];
+  for(let i=0;i<PLANT_STAGES.length;i++){
+    if(total >= PLANT_STAGES[i].min){ cur = PLANT_STAGES[i]; next = PLANT_STAGES[i+1] || PLANT_STAGES[i]; }
+  }
+  const curIdx = PLANT_STAGES.indexOf(cur);
+  const prevMin = cur.min;
+  const nextMin = next.min === cur.min ? cur.min+100 : next.min;
+  const pct = Math.min(100, Math.max(2, ((total-prevMin)/(nextMin-prevMin))*100));
+  return {stage:cur, next, total, pct, curIdx};
+}
+
+// ---------- SELF-CARE NUDGES ----------
+const CARE_NUDGES = [
+  {emoji:'💧', text:'Time for a sip of water, Leen. Your brain is 73% water — keep it happy.'},
+  {emoji:'🤲', text:'Pause for 30 seconds. Make a quick du\'a for ease, for your family, for your patients.'},
+  {emoji:'🧘', text:'Roll your shoulders back. Stretch your neck. Breathe in for 4, out for 6.'},
+  {emoji:'💌', text:'Text someone you love a quick \'thinking of you\' — even one word is enough.'},
+  {emoji:'🌿', text:'Look away from the screen for 20 seconds at something 20 feet away (20-20-20 rule).'},
+  {emoji:'☕', text:'Refill your tea/water. Take three slow sips before the next block.'},
+  {emoji:'🫂', text:'Say Alhamdulillah for something small right now — that\'s worship too.'},
+  {emoji:'😌', text:'Unclench your jaw. Relax your forehead. You\'re doing your best and that\'s enough.'},
+  {emoji:'🤍', text:'Astaghfirullah 3 times — reset your heart before the next round.'},
+  {emoji:'🍎', text:'Have a little snack when you can. Low blood sugar makes hard questions harder.'},
+  {emoji:'🌬️', text:'Three deep breaths. Inhale for 4, hold 4, exhale 6. Feel the calm.'},
+  {emoji:'✨', text:'Smile, Leen. It\'s a sunnah, and you\'re alive and working toward something beautiful.'},
+];
+let _nudgeCount = 0;
+function maybeNudge(pomoCount){
+  _nudgeCount++;
+  // First nudge at 2nd pomo, then every ~3 pomodoros after (but deterministic by counter)
+  if(_nudgeCount < 2 || _nudgeCount % 3 !== 0) return null;
+  const i = (_nudgeCount*7 + new Date().getDate()) % CARE_NUDGES.length;
+  return CARE_NUDGES[i];
+}
+
+
 // ---------- LEVEL SYSTEM ----------
 const LEVELS = [
   {level:1,title:"Aspiring Pre-Med",min:0},
@@ -167,6 +219,7 @@ function getQOTD(){
 // ---------- CONFETTI ----------
 function launchConfetti(){
   const colors = ['#a78bfa','#ec4899','#60a5fa','#34d399','#fbbf24','#fb923c','#f87171','#22d3ee'];
+  const shapes = ['square','dot','star'];
   for(let i=0;i<80;i++){
     const el = document.createElement('div');
     const size = Math.random()*10+6;
@@ -174,9 +227,32 @@ function launchConfetti(){
     const left = Math.random()*100;
     const dur = Math.random()*2+2;
     const delay = Math.random()*0.5;
-    el.style.cssText = `position:fixed;top:-20px;left:${left}%;width:${size}px;height:${size}px;background:${color};border-radius:${Math.random()>0.5?'50%':'3px'};z-index:9999;pointer-events:none;transform:rotate(${Math.random()*360}deg);animation:confetti-fall ${dur}s ${delay}s cubic-bezier(0.2,0.8,0.4,1) forwards;`;
+    const shape = shapes[Math.floor(Math.random()*shapes.length)];
+    const radius = shape==='dot'?'50%':shape==='star'?'0':'3px';
+    el.style.cssText = `position:fixed;top:-20px;left:${left}%;width:${size}px;height:${size}px;background:${color};border-radius:${radius};z-index:9999;pointer-events:none;transform:rotate(${Math.random()*360}deg);animation:confetti-fall ${dur}s ${delay}s cubic-bezier(0.2,0.8,0.4,1) forwards;`;
     document.body.appendChild(el);
     setTimeout(()=>el.remove(), (dur+delay)*1000+100);
+  }
+}
+
+// ---------- MEDICAL CONFETTI (brains, anatomical hearts, flowers, stethoscopes, neurons) ----------
+function launchHearts(){
+  const emojis = ['🧠','🫀','🌸','🩺','⚡','🔬','✨','🧬','💉','🪻'];
+  for(let i=0;i<40;i++){
+    const el = document.createElement('div');
+    const left = Math.random()*100;
+    const dur = Math.random()*2.2+2.8;
+    const delay = Math.random()*0.6;
+    const size = Math.random()*12+20;
+    const emoji = emojis[Math.floor(Math.random()*emojis.length)];
+    el.textContent = emoji;
+    const sway = (Math.random()-0.5)*180;
+    const rot = (Math.random()-0.5)*60;
+    el.style.cssText = `position:fixed;top:-50px;left:${left}%;font-size:${size}px;z-index:9999;pointer-events:none;animation:heart-fall ${dur}s ${delay}s cubic-bezier(0.25,0.8,0.3,1) forwards;filter:drop-shadow(0 2px 4px rgba(167,139,250,0.4));`;
+    el.style.setProperty('--sway', sway+'px');
+    el.style.setProperty('--rot', rot+'deg');
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(), (dur+delay)*1000+200);
   }
 }
 
@@ -187,6 +263,15 @@ function launchConfetti(){
     @keyframes confetti-fall{
       0%{transform:translateY(-20px) rotate(0deg);opacity:1;}
       100%{transform:translateY(110vh) rotate(720deg);opacity:0.8;}
+    }
+    @keyframes heart-fall{
+      0%{transform:translateY(-50px) translateX(0) rotate(calc(var(--rot,0deg) * -1));opacity:1;}
+      50%{transform:translateY(55vh) translateX(var(--sway,0px)) rotate(calc(var(--rot,0deg) * 0.5));opacity:1;}
+      100%{transform:translateY(110vh) translateX(calc(var(--sway,0px) * -1)) rotate(var(--rot,20deg));opacity:0;}
+    }
+    @keyframes plant-sway{
+      0%,100%{transform:rotate(-3deg);}
+      50%{transform:rotate(3deg);}
     }
     @keyframes fadeUp{
       from{opacity:0;transform:translateY(20px) scale(0.95);}
@@ -449,8 +534,16 @@ function getAccent(){
 function setAccent(id){
   localStorage.setItem('mcat-accent', id);
   const a = getAccent();
+  const asRgb = hex => {
+    const value = hex.replace('#','');
+    const full = value.length === 3 ? value.split('').map(ch=>ch+ch).join('') : value;
+    const n = parseInt(full,16);
+    return `${(n>>16)&255}, ${(n>>8)&255}, ${n&255}`;
+  };
   document.documentElement.style.setProperty('--purple', a.c1);
   document.documentElement.style.setProperty('--pink', a.c2);
+  document.documentElement.style.setProperty('--purple-rgb', asRgb(a.c1));
+  document.documentElement.style.setProperty('--pink-rgb', asRgb(a.c2));
 }
 
 // ---------- POMODORO HEATMAP DATA ----------
@@ -553,7 +646,7 @@ function nextPrayer(){
 const SYNC_KEYS = [
   'mcat-stats','mcat-fl-scores','mcat-test-date','mcat-schedule','mcat-tasks',
   'mcat-wrong','mcat-self-letter','mcat-wins','mcat-tasbih','mcat-checklist',
-  'mcat-pomo-history','mcat-accent','mcat-theme','mcat-sound','mcat-welcomed','mcat-letter-opened'
+  'mcat-pomo-history','mcat-accent','mcat-theme','mcat-sound','mcat-welcomed','mcat-welcomed-neuro-atelier','mcat-letter-opened'
 ];
 const SYNC_VERSION = 1;
 
