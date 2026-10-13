@@ -29,7 +29,7 @@ const APP_SHELL = [
   './assets/fonts/Amiri-Arabic-Regular.woff2',
   './assets/fonts/Amiri-Arabic-Bold.woff2'
 ];
-const CACHE = 'mcat-cute-preview-v3-floral-icon';
+const CACHE = 'mcat-cute-preview-v4-responsive';
 
 self.addEventListener('install', event => {
   event.waitUntil(
