@@ -1,0 +1,133 @@
+/* Neuro edition responsive layer: touch-first navigation, readable tablet hero, and compact-phone safety. */
+
+/* iPad landscape and narrower: replace the long wrapped tab row with the existing accessible menu button. */
+@media(max-width:1100px){
+  .navbar{
+    flex-wrap:wrap!important;align-items:center!important;justify-content:space-between!important;
+    gap:0!important;padding:12px 22px!important;
+  }
+  .nav-brand{order:1!important;min-width:0!important;flex:0 1 auto!important;width:auto!important;margin:0!important;}
+  .nav-toggle{display:inline-flex!important;order:2!important;flex:0 0 44px!important;margin-left:auto!important;}
+  .nav-links{
+    display:none!important;flex-direction:column!important;order:3!important;flex:0 0 100%!important;width:100%!important;
+    gap:3px!important;padding:12px 2px 4px!important;max-height:65vh;overflow-y:auto;overflow-x:hidden;
+    -webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+    border-top:1px solid rgba(223,205,255,.12);margin-top:10px;
+  }
+  .nav-links.open{display:flex!important;}
+  .nav-link{
+    display:flex!important;align-items:center;width:100%!important;min-height:48px!important;
+    padding:12px 16px!important;text-align:left!important;border-radius:13px!important;
+  }
+  .nav-link.active{border-radius:13px!important;}
+  .stat-cards{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:12px!important;}
+  .quick-actions{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:12px!important;}
+}
+
+/* Tablet portrait: let the portrait lead, then stack identity, countdown and dashboard cards. */
+@media(max-width:900px) and (min-width:601px){
+  .hero-stage{min-height:590px!important;}
+  .hero-stage-art{background-size:auto 66%!important;background-position:right top!important;transform:none!important;}
+  .hero-stage-overlay{
+    background:linear-gradient(180deg,rgba(9,5,22,.02) 0%,rgba(10,5,24,.12) 29%,rgba(10,5,24,.88) 58%,rgba(10,5,24,.99) 77%),
+      linear-gradient(90deg,rgba(10,5,24,.12),transparent 72%)!important;
+  }
+  .hero-stage-main{width:100%!important;padding:226px 28px 28px!important;}
+  .hero-stage-main .stage-time{width:min(100%,620px);}
+  .hero-stage-main .stage-identity{max-width:620px;}
+  .stage-name{font-size:clamp(3.5rem,7.8vw,4.35rem)!important;}
+  .stage-index{right:18px;bottom:15px;}
+  .grid.grid-2{grid-template-columns:1fr!important;gap:14px!important;}
+  .welcome-overlay .welcome-card{width:min(760px,94vw)!important;min-height:min(720px,92vh)!important;align-items:flex-end!important;}
+  .welcome-overlay .welcome-art{
+    background-color:#0c071e;
+    background-image:linear-gradient(180deg,rgba(9,4,21,.04) 0%,rgba(9,4,21,.1) 34%,rgba(9,4,21,.82) 62%,#0c071e 82%),url('./assets/hero-atlas.webp')!important;
+    background-size:auto 60%,auto 60%!important;background-position:82% top,82% top!important;background-repeat:no-repeat!important;
+  }
+  .welcome-copy{width:100%!important;max-width:none;padding:240px 32px 42px!important;}
+}
+
+@media(max-width:768px){
+  main{padding-left:18px!important;padding-right:18px!important;}
+  .navbar{padding:max(10px,env(safe-area-inset-top)) 16px 10px!important;}
+  .hero-stage{border-radius:25px!important;}
+  .hero-stage-main{width:100%!important;}
+  .grid.grid-2{grid-template-columns:1fr!important;}
+  .section-header{margin-bottom:20px;}
+  .card,.card-flat,.dedication-card{padding:16px;}
+  .modal-content,.pomodoro-modal,.levelup-card{
+    max-height:calc(100vh - 28px)!important;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  }
+}
+
+/* Phone: preserve the whole picture, keep countdown cells legible, and avoid iOS input zoom. */
+@media(max-width:600px){
+  .hero-stage{min-height:620px!important;margin:2px 0 23px!important;border-radius:24px!important;}
+  .hero-stage-art{background-size:auto 66%!important;background-position:74% top!important;transform:none!important;}
+  .hero-stage-overlay{
+    background:linear-gradient(180deg,rgba(9,5,22,.02) 0%,rgba(10,5,24,.1) 29%,rgba(10,5,24,.9) 57%,rgba(10,5,24,.99) 78%),
+      linear-gradient(90deg,rgba(10,5,24,.08),transparent 72%)!important;
+  }
+  .hero-stage-main{padding:214px 18px 25px!important;}
+  .hero-stage-main .stage-time{width:100%;padding:13px 12px 12px!important;}
+  .stage-time-head{gap:8px!important;}
+  .stage-time-row{gap:9px!important;}
+  .stage-days{gap:7px!important;}
+  .stage-days strong{font-size:clamp(2.35rem,10vw,2.85rem)!important;}
+  .stage-clock b{font-size:.94rem!important;}
+  .stage-clock small{font-size:.4rem!important;letter-spacing:.04em!important;}
+  .stage-phase{max-width:54%;padding:6px 7px!important;}
+  .stage-phase b{font-size:.5rem!important;}
+  .stage-index{right:13px!important;bottom:12px!important;}
+  .stat-cards{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;}
+  .quick-actions{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;}
+  .grid.grid-2{grid-template-columns:1fr!important;gap:12px!important;}
+  .daily-verse-card{grid-template-columns:38px minmax(0,1fr) 44px!important;gap:9px!important;padding:15px 12px!important;}
+  .verse-seal{width:34px!important;height:34px!important;}
+  .verse-refresh{width:43px!important;height:48px!important;}
+  input,textarea,select,.score-input{font-size:16px!important;}
+  .score-table-wrap,.table-wrap{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .score-table{min-width:560px;}
+  .welcome-overlay{padding:10px!important;}
+  .welcome-overlay .welcome-card{width:100%!important;max-width:none!important;min-height:min(700px,94vh)!important;align-items:flex-end!important;}
+  .welcome-overlay .welcome-art{
+    background-color:#0c071e;
+    background-image:linear-gradient(180deg,rgba(9,4,21,.02) 0%,rgba(9,4,21,.08) 31%,rgba(9,4,21,.82) 58%,#0c071e 80%),url('./assets/hero-atlas.webp')!important;
+    background-size:auto 62%,auto 62%!important;background-position:74% top,74% top!important;background-repeat:no-repeat!important;
+  }
+  .welcome-copy{width:100%!important;max-width:none!important;padding:0 22px 42px!important;}
+}
+
+@media(max-width:380px){
+  main{padding-left:12px!important;padding-right:12px!important;}
+  .hero-stage{min-height:640px!important;}
+  .hero-stage-main{padding-left:14px!important;padding-right:14px!important;}
+  .stage-time{padding-left:9px!important;padding-right:9px!important;}
+  .stage-time-head{align-items:flex-start!important;flex-direction:column!important;}
+  .stage-phase{max-width:100%!important;}
+  .stage-time-row{gap:6px!important;}
+  .stage-days strong{font-size:2.3rem!important;}
+  .stage-clock b{font-size:.86rem!important;}
+  .stage-note{max-width:100%!important;}
+  .daily-verse-card{grid-template-columns:32px minmax(0,1fr) 40px!important;gap:7px!important;}
+  .verse-refresh{width:39px!important;height:44px!important;}
+  .quick-action{padding:13px 9px!important;}
+}
+
+/* Touch screens, safe-area devices and short landscape iPad/iPhone views. */
+@media(pointer:coarse){
+  .nav-toggle,.nav-link,.btn,.task-check,.quiz-choice,.verse-refresh{min-height:44px;}
+  .task-check{min-width:44px;}
+}
+@media(max-height:520px) and (orientation:landscape){
+  .navbar{position:relative;}
+  .nav-links{max-height:56vh!important;}
+  .hero-stage{min-height:520px!important;}
+  .welcome-overlay .welcome-card{max-height:calc(100vh - 24px)!important;overflow:auto;}
+}
+@supports(height:100dvh){
+  @media(max-width:1100px){.nav-links{max-height:65dvh;}}
+  .modal-content,.pomodoro-modal,.welcome-overlay .welcome-card{
+    max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px);
+  }
+}

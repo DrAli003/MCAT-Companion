@@ -5,7 +5,7 @@ const APP_SHELL = [
   './styles.css',
   './neuro.css',
   './hero-refine.css',
-  './cute-preview.css',
+  './responsive-neuro.css',
   './neural.js',
   './app.js',
   './data.js',
@@ -21,15 +21,9 @@ const APP_SHELL = [
   './logo.png',
   './assets/brain-bg.webp',
   './assets/doctor-bg.webp',
-  './assets/hero-atlas.webp',
-  './assets/floral-neuro-pattern.webp',
-  './assets/fonts/Nunito-Latin.woff2',
-  './assets/fonts/PlayfairDisplay-Latin.woff2',
-  './assets/fonts/DancingScript-Latin.woff2',
-  './assets/fonts/Amiri-Arabic-Regular.woff2',
-  './assets/fonts/Amiri-Arabic-Bold.woff2'
+  './assets/hero-atlas.webp'
 ];
-const CACHE = 'mcat-cute-preview-v4-responsive';
+const CACHE = 'mcat-v18-neuro-responsive';
 
 self.addEventListener('install', event => {
   event.waitUntil(
